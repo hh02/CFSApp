@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cmath>
 #include <iostream>
+#include <vector>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include "my_imconfig.h"
@@ -58,89 +59,114 @@ struct Node {
     ImVec2 pos;
     ImVec2 prevCtrlPos;
     ImVec2 nextCtrlPos;
-    Node *prev;
-    Node *next;
-    Node() : pos(), prevCtrlPos(), nextCtrlPos(), prev(nullptr), next(nullptr) {}
-    explicit Node(ImVec2 thePos) : pos(thePos), prevCtrlPos(), nextCtrlPos(), prev(nullptr), next(nullptr) {}
-    Node(Node *thePrev, Node *theNext) : pos(), prevCtrlPos(), nextCtrlPos(), prev(thePrev), next(theNext) {}
+    Node() : pos(), prevCtrlPos(), nextCtrlPos() {}
+    explicit Node(ImVec2 thePos) : pos(thePos), prevCtrlPos(), nextCtrlPos() {}
 };
+
 
 class Contour {
 public:
     explicit Contour() {
-        size = 1;
-        head = tail = new Node();
-        head->prev = head->next = tail;
         color_selected = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
         color_hovered = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
         color_path_node = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
         color_ctrl_node = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
     }
-    ~Contour() {
-        Node *curr = head;
-        do {
-            Node *next = curr->next;
-            delete curr;
-            curr = next;
-        } while (curr != tail);
-    }
-    Node *insert_after(Node *node) {
-        size++;
-        Node *node_next = node->next;
-        node->next = new Node(node, node_next);
-        node_next->prev = node->next;
-        return node->next;
-    }
-    void delete_node(Node *node) {
-        if (size <= 1 || node == nullptr) {
-            return;
+
+
+    // Drawing order: normal nodes -> selected nodes -> hovered nodes
+
+    void drawNodes(ImDrawList *draw_list, ImVec2 origin) {
+        for (const auto &node : nodes) {
+            draw_list->AddCircleFilled(ImVec2(origin.x+node.pos.x, origin.y+node.pos.y), node_radius_medium, color_path_node);
+            draw_list->AddCircleFilled(ImVec2(origin.x+node.prevCtrlPos.x, origin.y+node.prevCtrlPos.y), node_radius_medium, color_ctrl_node);
+            draw_list->AddCircleFilled(ImVec2(origin.x+node.nextCtrlPos.x, origin.y+node.nextCtrlPos.y), node_radius_medium, color_ctrl_node);
         }
-        size--;
-        node->prev->next = node->next;
-        node->next->prev = node->prev;
-        delete node;
-    }
-    Node &front() {
-        return *head;
     }
 
-    void getNearestNode(const ImVec2 &pos, const Node *&nearest_node_ptr, int &nearest_node_type, float &min_dis) {
-        nearest_node_ptr = nullptr;
-        nearest_node_type = 0; // 0 for path node, 1 for previous control node, 2 for next control node
-        min_dis = std::numeric_limits<float>::max();
-        Node *curr = head;
-        auto updateMin = [&](const Node *now, const ImVec2 &node_pos, int node_type) {
-            float dis = L2Distance(node_pos, pos);
-            if (dis < min_dis) {
-                min_dis = dis;
-                nearest_node_ptr = now;
-                nearest_node_type = node_type;
+    void drawSelectedNode(ImDrawList *draw_list, ImVec2 origin) {
+
+    }
+
+    void drawHoveredNode(ImDrawList *draw_list, ImVec2 origin) {
+
+    }
+
+    void setColorSelected(ImU32 color) {
+        color_selected = color;
+    }
+    void setColorHovered(ImU32 color) {
+        color_hovered = color;
+    }
+    void setColorPathNode(ImU32 color) {
+        color_path_node = color;
+    }
+    void setColorCtrlNode(ImU32 color) {
+        color_ctrl_node = color;
+    }
+
+    void updateSelectAndHover(ImVec2 mouse_pos) {
+        size_t nearest_node_id = 0;
+        int nearest_node_type = 0;
+        float distance = std::numeric_limits<float>::max();
+        getNearestNode(mouse_pos, nearest_node_id, nearest_node_type, distance);
+        // TODO: use threshold
+        if (distance < 6) {
+            node_id_hovered = nearest_node_id;
+            // threshold is 0!
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f)) {
+                node_id_selected = nearest_node_id;
             }
-        };
-        do {
-            updateMin(curr, curr->pos, 0);
-            updateMin(curr, curr->prevCtrlPos, 1);
-            updateMin(curr, curr->nextCtrlPos, 2);
-            curr = curr->next;
-        } while (curr != tail);
+
+        } else {
+            node_id_hovered = -1;
+        }
+
+
     }
-    void drawNodes(ImDrawList *draw_list, ImVec2 origin, float radius) {
-        Node *curr = head;
-        do {
-            draw_list->AddCircleFilled(ImVec2(origin.x+curr->pos.x, origin.y+curr->pos.y), radius, color_path_node);
-            draw_list->AddCircleFilled(ImVec2(origin.x+curr->prevCtrlPos.x, origin.y+curr->prevCtrlPos.y), radius, color_ctrl_node);
-            draw_list->AddCircleFilled(ImVec2(origin.x+curr->nextCtrlPos.x, origin.y+curr->nextCtrlPos.y), radius, color_ctrl_node);
-        } while (curr != tail);
-    }
+
+
 private:
-    size_t size;
-    Node *head;
-    Node *tail;
+    std::vector<Node> nodes;
+    // states
+    bool is_closed;
+    size_t node_id_selected;
+    int node_type_selected;
+    size_t node_id_hovered;
+
+
+    // properties
     ImU32 color_selected;
     ImU32 color_hovered;
     ImU32 color_path_node;
     ImU32 color_ctrl_node;
+
+    float node_radius_small = 2;
+    float node_radius_medium = 3;
+    float node_radius_large = 4;
+
+    void getNearestNode(const ImVec2 pos, size_t &nearest_node_id, int &nearest_node_type, float &min_dis) {
+        nearest_node_id = 0;
+        // TODO: use enum
+        nearest_node_type = 0; // 0 for path node, 1 for previous control node, 2 for next control node
+        min_dis = std::numeric_limits<float>::max();
+        auto updateMin = [&](size_t curr, const ImVec2 node_pos, int node_type) {
+            float dis = L2Distance(node_pos, pos);
+            if (dis < min_dis) {
+                min_dis = dis;
+                nearest_node_id = curr;
+                nearest_node_type = node_type;
+            }
+        };
+        for (size_t i = 0; i < nodes.size(); i++) {
+            updateMin(i, nodes[i].pos, 0);
+            updateMin(i, nodes[i].prevCtrlPos, 1);
+            updateMin(i, nodes[i].nextCtrlPos, 2);
+        }
+    }
 };
+
+
 
 
 //-----------------------------------------------------------------------------
@@ -210,19 +236,6 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             Eigen::Vector2d test(1, 2);
 
 
-            // draw new contour
-            if (true) {
-                contours.emplace_back();
-                static bool is_moving = true;
-                Contour &contour = contours.back();
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                    is_moving = false;
-                }
-                Node &current_node = contour.front();
-                if (is_moving) {
-                    current_node.pos = mouse_pos_in_canvas;
-                }
-            }
 
 
             // Insert New Node
@@ -281,20 +294,6 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                 for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
                     draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
             }
-
-            static Contour &contour = contours.back();
-            // get nearest nodes
-            const Node *nearest_node_ptr = nullptr;
-            // 0 node, 1 previous control node, 2 next control node
-            int nearest_node_type = 0;
-            float min_dis = std::numeric_limits<float>::max();
-            contour.getNearestNode(mouse_pos_in_canvas, nearest_node_ptr, nearest_node_type, min_dis);
-
-
-
-
-
-
 
 
             bool hovered = (min_dis < 5);

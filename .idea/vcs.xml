@@ -16,6 +16,5 @@
     <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/imguizmo-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/libigl-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/libigl_imgui_fonts-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/ssvg" vcs="Git" />
   </component>
 </project>
