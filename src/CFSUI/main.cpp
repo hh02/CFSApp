@@ -65,20 +65,21 @@ struct Curve {
 
 class Contour {
 public:
-    Contour() : point_hovered{-1, 0}, curve_selected{-1} {
-        points.emplace_back();
+    Contour() : point_hovered{-1, 0}, curve_selected{0} {
+        points.emplace_back(); // p3
+        curves.emplace_back(0, 0, 0, 0);
         is_inserting = true;
         is_closed = false;
 
         // set properties
         color_selected = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
         color_hovered = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
-        point_radius = 6;
+        point_radius = 4;
         point_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
         ctrl_point_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
 
         curve_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
-        curve_thickness = 3.0f;
+        curve_thickness = 2.0f;
 
         threshold = 6.0f;
 
@@ -90,7 +91,7 @@ public:
     }
 
     void addCurveBack() {
-        size_t p0 = curves.empty() ? 0 : curves.back().p[3];
+        size_t p0 = curves.back().p[3];
         points.emplace_back(); // p1
         size_t p1 = points.size() - 1;
         points.emplace_back(); // p2;
@@ -100,43 +101,38 @@ public:
     }
     // TODO: use pointer as below
     void updateInsertingPointPos(const ImVec2 &mouse_pos) {
-        if (curves.empty()) {
-            points.front() = mouse_pos;
-            return;
-        } else {
-            Curve &curve = curves.back();
-            const ImVec2 &p0 = points[curve.p[0]];
-            ImVec2 &p1 = points[curve.p[1]];
-            ImVec2 &p2 = points[curve.p[2]];
-            ImVec2 &p3 = points[curve.p[3]];
+        const size_t *p = curves.back().p;
+        const ImVec2 &p0 = points[p[0]];
+        ImVec2 &p1 = points[p[1]];
+        ImVec2 &p2 = points[p[2]];
+        ImVec2 &p3 = points[p[3]];
 
-            p3 = mouse_pos;
-            float dx = (p3.x - p0.x) / 3.0f;
-            float dy = (p3.y - p0.y) / 3.0f;
-            p1 = ImVec2(p0.x + dx, p0.y + dy);
-            p2 = ImVec2(p3.x - dx, p3.y - dy);
-        }
+        p3 = mouse_pos;
+        float dx = (p3.x - p0.x) / 3.0f;
+        float dy = (p3.y - p0.y) / 3.0f;
+        p1 = ImVec2(p0.x + dx, p0.y + dy);
+        p2 = ImVec2(p3.x - dx, p3.y - dy);
     }
     void updatePointHoveredAndSelected(const ImVec2 &mouse_pos, bool is_mouse_down) {
-        std::pair<int, int> nearest_point{-1, -1};
+        std::pair<size_t, size_t> nearest_point{0, 1};
         float min_dis{std::numeric_limits<float>::max()};
         getNearestPoint(mouse_pos, nearest_point, min_dis);
-        //std::cout << nearest_point.first << " " << nearest_point.second << " " << min_dis << std::endl;
+        std::cout << nearest_point.first << " " << nearest_point.second << std::endl;
         if (min_dis < threshold) {
+            is_hovered = true;
             point_hovered = nearest_point;
             if (is_mouse_down) {
                 curve_selected = nearest_point.first;
-                std::cout << nearest_point.first << std::endl;
             }
         } else {
-            point_hovered.first = point_hovered.second = -1;
+            is_hovered = false;
         }
     }
 
 
 
     void finishInserting() {
-        if (curves.empty()) {
+        if (curves.size() == 1) {
             addCurveBack();
         } else {
             is_inserting = false;
@@ -145,22 +141,19 @@ public:
 
     void drawPoints(ImDrawList *draw_list, const ImVec2& origin) const {
         // 1. draw normal points
-        if (!is_closed) {
-            draw_list->AddCircleFilled(ImVec2(origin.x + points[0].x, origin.y+points[0].y), point_radius, point_color);
-        }
         for (const Curve &curve : curves) {
             const size_t *p = curve.p;
-            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y), point_radius, point_color);
             draw_list->AddCircleFilled(ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y), point_radius, ctrl_point_color);
             draw_list->AddCircleFilled(ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y), point_radius, ctrl_point_color);
+            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y), point_radius, point_color);
         }
         // 2. draw point hovered
-        if (!(point_hovered.first == -1 && point_hovered.second == -1)) {
-            const ImVec2 &ph = point_hovered.first == -1 ? points[0] : points[curves[point_hovered.first].p[point_hovered.second]];
-            draw_list->AddCircleFilled(ImVec2(origin.x+ph.x, origin.y+ph.y), point_radius, color_hovered);
+        if (is_hovered) {
+            const ImVec2 &ph = points[curves[point_hovered.first].p[point_hovered.second]];
+            draw_list->AddCircleFilled(ImVec2(origin.x + ph.x, origin.y + ph.y), point_radius, color_hovered);
         }
         // 3. draw point selected
-        const ImVec2 &ps = curve_selected == -1 ? points[0] : points[curves[curve_selected].p[3]];
+        const ImVec2 &ps = points[curves[curve_selected].p[3]];
         draw_list->AddCircleFilled(ImVec2(origin.x+ps.x, origin.y+ps.y), point_radius, color_selected);
 
     }
@@ -176,7 +169,6 @@ public:
                                       curve_color, curve_thickness);
         }
         // 2. draw selected curves
-        if (curve_selected == -1) return;
         const size_t *p = curves[curve_selected].p;
         draw_list->AddBezierCubic(ImVec2(origin.x+points[p[0]].x, origin.y+points[p[0]].y),
                                   ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y),
@@ -240,8 +232,9 @@ private:
     bool is_closed;
     bool is_inserting; // is inserting point
 
-    int curve_selected;
-    std::pair<int, int> point_hovered; // {-1, -1} stand for no hovered;
+    size_t curve_selected;
+    bool is_hovered;
+    std::pair<size_t, size_t> point_hovered; // {-1, -1} stand for no hovered;
 
 
     // properties
@@ -257,24 +250,19 @@ private:
     float curve_thickness;
     ImU32 curve_color;
 
-    void getNearestPoint(const ImVec2 &pos, std::pair<int, int> &nearest_point, float &min_dis) {
-        nearest_point.first = -1; // id of the curve which the point on, -1 for points[0] (not closed);
-        nearest_point.second = 1; // 1~3 for p[1~3]
+    void getNearestPoint(const ImVec2 &pos, std::pair<size_t, size_t> &nearest_point, float &min_dis) {
+        nearest_point.first = 0;
+        nearest_point.second = 1; // 1~3 for p[1~3], 0 belongs to former
         min_dis = std::numeric_limits<float>::max();
-        if (!is_closed) {
-            float dis = L2Distance(points[0], pos);
-            min_dis = dis;
-            nearest_point.first = -1;
-            nearest_point.second = 0;
-        }
+
         for (size_t i = 0; i < curves.size(); i++) {
             const size_t *p = curves[i].p;
             for (size_t j = 1; j < 4; j++) {
                 float dis = L2Distance(points[p[j]], pos);
                 if (dis < min_dis) {
                     min_dis = dis;
-                    nearest_point.first = static_cast<int>(i);
-                    nearest_point.second = static_cast<int>(j);
+                    nearest_point.first = i;
+                    nearest_point.second = j;
                 }
             }
         }
