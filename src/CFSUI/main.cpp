@@ -12,10 +12,13 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <array>
+
 #define GL_SILENCE_DEPRECATION
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
+
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -25,18 +28,15 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-static void glfw_error_callback(int error, const char* description)
-{
+static void glfw_error_callback(int error, const char *description) {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 // In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
-static void HelpMarker(const char* desc)
-{
+static void HelpMarker(const char *desc) {
     ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered())
-    {
+    if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
         ImGui::TextUnformatted(desc);
@@ -44,230 +44,254 @@ static void HelpMarker(const char* desc)
         ImGui::EndTooltip();
     }
 }
+namespace CFSUI {
+    inline ImVec2 ImVec2Add(const ImVec2 &lhs, const ImVec2 &rhs) {
+        return {lhs.x+rhs.x, lhs.y+rhs.y};
+    }
+    inline ImVec2 ImVec2Sub(const ImVec2 &lhs, const ImVec2 &rhs) {
+        return {lhs.x - rhs.x, lhs.y-rhs.y};
+    }
 
-inline float L1Distance(const ImVec2 &a, const ImVec2 &b) {
-    return fabs(a.x-b.x) + fabs(a.y-b.y);
 }
 
-inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
-    return std::hypot(a.x-b.x, a.y-b.y);
-}
+namespace CFSUI::Canvas {
+    using Node = std::array<ImVec2, 3>;
+    // One node has three points: 1 path point, 2 control points
+    struct Path {
+        std::vector<Node> nodes;
+        bool is_closed;
+
+        // A path at least has one node
+        Path() : nodes(1), is_closed(false) {}
+    };
 
 
-
-// cubic Bezier curve
-// A curve is selected when its end point is selected;
-struct Curve {
-    // cubic Bezier curve's point's ids
-    size_t p[4];
-    Curve(size_t p0, size_t p1, size_t p2, size_t p3) : p{p0, p1, p2, p3} {}
-};
-
-class Contour {
-public:
-    Contour() : point_hovered{-1, 0}, curve_selected{0} {
-        points.emplace_back(); // p3
-        curves.emplace_back(0, 0, 0, 0);
-        is_inserting = true;
-        is_closed = false;
-
-        // set properties
-        color_selected = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
-        color_hovered = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
-        point_radius = 4;
-        point_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
-        ctrl_point_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
-
-        curve_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
-        curve_thickness = 2.0f;
-
-        threshold = 6.0f;
-
-
-    }
-
-    bool isInserting() const {
-        return is_inserting;
-    }
-
-    void addCurveBack() {
-        size_t p0 = curves.back().p[3];
-        points.emplace_back(); // p1
-        size_t p1 = points.size() - 1;
-        points.emplace_back(); // p2;
-        points.emplace_back(); // p3;
-        curves.emplace_back(p0, p1, p1+1, p1+2);
-        is_inserting = true;
-    }
-    // TODO: use pointer as below
-    void updateInsertingPointPos(const ImVec2 &mouse_pos) {
-        const size_t *p = curves.back().p;
-        const ImVec2 &p0 = points[p[0]];
-        ImVec2 &p1 = points[p[1]];
-        ImVec2 &p2 = points[p[2]];
-        ImVec2 &p3 = points[p[3]];
-
-        p3 = mouse_pos;
-        float dx = (p3.x - p0.x) / 3.0f;
-        float dy = (p3.y - p0.y) / 3.0f;
-        p1 = ImVec2(p0.x + dx, p0.y + dy);
-        p2 = ImVec2(p3.x - dx, p3.y - dy);
-    }
-    void updatePointHoveredAndSelected(const ImVec2 &mouse_pos, bool is_mouse_down) {
-        std::pair<size_t, size_t> nearest_point{0, 1};
-        float min_dis{std::numeric_limits<float>::max()};
-        getNearestPoint(mouse_pos, nearest_point, min_dis);
-        std::cout << nearest_point.first << " " << nearest_point.second << std::endl;
-        if (min_dis < threshold) {
-            is_hovered = true;
-            point_hovered = nearest_point;
-            if (is_mouse_down) {
-                curve_selected = nearest_point.first;
-            }
-        } else {
-            is_hovered = false;
-        }
+    inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
+        return std::hypot(a.x - b.x, a.y - b.y);
     }
 
 
-
-    void finishInserting() {
-        if (curves.size() == 1) {
-            addCurveBack();
-        } else {
-            is_inserting = false;
-        }
-    }
-
-    void drawPoints(ImDrawList *draw_list, const ImVec2& origin) const {
-        // 1. draw normal points
-        for (const Curve &curve : curves) {
-            const size_t *p = curve.p;
-            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y), point_radius, ctrl_point_color);
-            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y), point_radius, ctrl_point_color);
-            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y), point_radius, point_color);
-        }
-        // 2. draw point hovered
-        if (is_hovered) {
-            const ImVec2 &ph = points[curves[point_hovered.first].p[point_hovered.second]];
-            draw_list->AddCircleFilled(ImVec2(origin.x + ph.x, origin.y + ph.y), point_radius, color_hovered);
-        }
-        // 3. draw point selected
-        const ImVec2 &ps = points[curves[curve_selected].p[3]];
-        draw_list->AddCircleFilled(ImVec2(origin.x+ps.x, origin.y+ps.y), point_radius, color_selected);
-
-    }
-
-    void drawCurves(ImDrawList *draw_list, const ImVec2& origin) const {
-        // 1. draw normal curves
-        for (const Curve &curve : curves) {
-            const size_t *p = curve.p;
-            draw_list->AddBezierCubic(ImVec2(origin.x+points[p[0]].x, origin.y+points[p[0]].y),
-                                      ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y),
-                                      ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y),
-                                      ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y),
-                                      curve_color, curve_thickness);
-        }
-        // 2. draw selected curves
-        const size_t *p = curves[curve_selected].p;
-        draw_list->AddBezierCubic(ImVec2(origin.x+points[p[0]].x, origin.y+points[p[0]].y),
-                                  ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y),
-                                  ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y),
-                                  ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y),
-                                  color_selected, curve_thickness);
-
-    }
-
-
-    void setColorSelected(ImU32 color) {
-        color_selected = color;
-    }
-    void setColorHovered(ImU32 color) {
-        color_hovered = color;
-    }
-
-    void setPointColor(ImU32 color) {
-        point_color = color;
-    }
-    void setCtrlPointColor(ImU32 color) {
-        ctrl_point_color = color;
-    }
-
-    void setCurveThickness(float thickness) {
-        curve_thickness = thickness;
-    }
-
-    void setCurveColor(ImU32 color) {
-        curve_color = color;
-    }
-
-/*    void updateSelectAndHover(ImVec2 mouse_pos) {
-        size_t nearest_node_id = 0;
-        int nearest_node_type = 0;
-        float distance = std::numeric_limits<float>::max();
-        getNearestNode(mouse_pos, nearest_node_id, nearest_node_type, distance);
-        // TODO: use threshold
-        if (distance < 6) {
-            node_id_hovered = nearest_node_id;
-            // threshold is 0!
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f)) {
-                node_id_selected = nearest_node_id;
+    void showCanvas(bool *open) {
+        float threshold = 6.0f;
+        if (ImGui::Begin("Canvas", open)) {
+            static ImVec2 scrolling(0.0f, 0.0f);
+            static std::vector<Path> paths;
+            static bool is_inserting_node = false;
+            static size_t inserting_node_idx = 0;
+            if (ImGui::Button("New contour")) {
+                paths.emplace_back();
+                is_inserting_node = true;
+                inserting_node_idx = 0;
             }
 
-        } else {
-            node_id_hovered = -1;
-        }
+
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+
+            // Draw border and background color
+            ImGuiIO &io = ImGui::GetIO();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(30, 30, 30, 255));
+            draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
+
+            // This will catch our interactions
+            ImGui::InvisibleButton("canvas", canvas_sz,
+                                   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+            const bool is_hovered = ImGui::IsItemHovered(); // Hovered
+            const bool is_active = ImGui::IsItemActive();   // Held
+            const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
+            const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+
+            // mouse status
+            const bool is_mouse_left_button_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+            const bool is_mouse_left_button_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+            const bool is_mouse_left_button_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+            const bool is_mouse_right_button_down = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+
+            static ImVec2 mouse_pos_clicked;
 
 
-    }*/
+            if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+                scrolling.x += io.MouseDelta.x;
+                scrolling.y += io.MouseDelta.y;
+            }
 
 
-private:
-
-    std::vector<Curve> curves;
-    std::vector<ImVec2> points;
-
-    float threshold; // threshold for select point
-    // states
-    bool is_closed;
-    bool is_inserting; // is inserting point
-
-    size_t curve_selected;
-    bool is_hovered;
-    std::pair<size_t, size_t> point_hovered; // {-1, -1} stand for no hovered;
+            if (!paths.empty()) {
+                // set properties
+                static float point_radius = 4.0f;
+                static ImU32 point_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
+                static ImU32 ctrl_point_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
+                static ImU32 selected_point_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
+                static ImU32 hovered_point_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
+                static ImU32 curve_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
+                static float curve_thickness = 2.0f;
+                static float handle_thickness = 1.0f;
+                static float threshold = 6.0f;
 
 
-    // properties
-    // action color
-    ImU32 color_selected;
-    ImU32 color_hovered;
-    ImU32 color_inserting;
+                // hover and select----------------------
+                bool is_hovering_point = false;
+                ImVec2 *point_hovered_ptr;
 
-    float point_radius;
-    ImU32 point_color;
-    ImU32 ctrl_point_color;
+                static size_t selected_path_idx = 0;
+                static size_t selected_node_idx = 0;
+                static size_t selected_point_idx = 0;
 
-    float curve_thickness;
-    ImU32 curve_color;
+                // update hovered and selected point-----------------
+                size_t nearest_path_idx;
+                size_t nearest_node_idx;
+                size_t nearest_point_idx;
+                const ImVec2* nearest_point_ptr;
+                float min_dis{std::numeric_limits<float>::max()};
 
-    void getNearestPoint(const ImVec2 &pos, std::pair<size_t, size_t> &nearest_point, float &min_dis) {
-        nearest_point.first = 0;
-        nearest_point.second = 1; // 1~3 for p[1~3], 0 belongs to former
-        min_dis = std::numeric_limits<float>::max();
+                auto updateMin = [&](const ImVec2& point, size_t path_idx, size_t node_idx, size_t point_idx) {
+                    float dis = L2Distance(point, mouse_pos_in_canvas);
+                    if (dis < min_dis) {
+                        min_dis = dis;
+                        nearest_path_idx = path_idx;
+                        nearest_node_idx = node_idx;
+                        nearest_point_idx = point_idx;
+                        nearest_point_ptr = &point;
+                    }
 
-        for (size_t i = 0; i < curves.size(); i++) {
-            const size_t *p = curves[i].p;
-            for (size_t j = 1; j < 4; j++) {
-                float dis = L2Distance(points[p[j]], pos);
-                if (dis < min_dis) {
-                    min_dis = dis;
-                    nearest_point.first = i;
-                    nearest_point.second = j;
+                };
+                // path point
+                for (size_t i = 0; i < paths.size(); i++) {
+                    const auto &nodes = paths[i].nodes;
+                    for (size_t j = 0; j < nodes.size(); j++) {
+                        updateMin(nodes[j][0], i, j, 0);
+                    }
                 }
+                // visible control point
+                if (selected_node_idx > 0 || (selected_node_idx == 0 && paths[selected_path_idx].is_closed)) {
+                    size_t prev_node_idx = selected_node_idx ? selected_node_idx-1 : paths[selected_path_idx].nodes.size() - 1;
+                    updateMin(paths[selected_path_idx].nodes[selected_node_idx][1], selected_path_idx, selected_node_idx, 1);
+                    updateMin(paths[selected_path_idx].nodes[prev_node_idx][2], selected_path_idx, prev_node_idx, 2);
+                }
+                if (min_dis < threshold) {
+                    is_hovering_point = true;
+                    // only path point can be selected
+                    if (is_mouse_left_button_clicked && nearest_point_idx == 0) {
+                        selected_path_idx = nearest_path_idx;
+                        selected_node_idx = nearest_node_idx;
+                        selected_point_idx = nearest_point_idx;
+                    }
+                }
+                // end update hovered and selected points
+                if (is_hovering_point) {
+                    ImGui::SetMouseCursor(7);
+                } else {
+                    ImGui::SetMouseCursor(0);
+                }
+
+
+
+                auto& selected_path = paths[selected_path_idx];
+                auto& selected_nodes = selected_path.nodes;
+                auto& selected_point = selected_nodes[selected_node_idx][selected_point_idx];
+
+
+                auto insertNodeBack = [&]() {
+                    selected_nodes.emplace_back();
+                    is_inserting_node = true;
+                    inserting_node_idx = selected_nodes.size() - 1;
+                };
+
+                if (is_mouse_left_button_clicked) {
+                    mouse_pos_clicked = mouse_pos_in_canvas;
+                    if (is_inserting_node) {
+                        if (selected_nodes.size() == 1) {
+                            insertNodeBack();
+                        } else {
+                            is_inserting_node = false;
+                        }
+                    }
+                }
+
+                // update the position of inserting and related points_selected
+                if (is_inserting_node) {
+
+                    selected_nodes[inserting_node_idx][0] = mouse_pos_in_canvas;
+                    if (inserting_node_idx > 0) {
+                        // modify the control point
+                        const auto& p0 = selected_nodes[inserting_node_idx - 1][0];
+                        auto& p1 = selected_nodes[inserting_node_idx - 1][2];
+                        auto& p2 = selected_nodes[inserting_node_idx][1];
+                        const auto& p3 = selected_nodes[inserting_node_idx][0];
+                        float dx = (p3.x - p0.x) / 3.0f;
+                        float dy = (p3.y - p0.y) / 3.0f;
+                        auto d = ImVec2Sub(p3, p0);
+                        d.x /= 3.0f;
+                        d.y /= 3.0f;
+                        p1 = ImVec2Add(p0, d);
+                        p2 = ImVec2Sub(p3, d);
+                    }
+
+                }
+
+                if (is_mouse_left_button_released) {
+
+                }
+
+
+                auto drawCurveWithOrigin = [&](const Node& pl, const Node& pr, ImU32 color){
+                    draw_list->AddBezierCubic(ImVec2Add(origin, pl[0]),ImVec2Add(origin, pl[2]),
+                                              ImVec2Add(origin, pr[1]), ImVec2Add(origin, pr[0]),
+                                              color, curve_thickness);
+                };
+                auto drawCtrlHandleWithOrigin = [&](const Node& pl, const Node& pr) {
+                    draw_list->AddLine(ImVec2Add(origin, pl[0]), ImVec2Add(origin,pl[2]), ctrl_point_color, handle_thickness);
+                };
+                // 1. draw normal curves
+                for (const auto& path : paths) {
+                    const auto& nodes = path.nodes;
+                    for (size_t i = 1; i < nodes.size(); i++) {
+                        drawCurveWithOrigin(nodes[i - 1], nodes[i], curve_color);
+                    }
+                    if (path.is_closed) {
+                        drawCurveWithOrigin(nodes.back(), nodes.front(), curve_color);
+                    }
+                }
+                if (selected_node_idx > 0 || (selected_node_idx == 0 && selected_path.is_closed)) {
+                    const auto& pl = selected_node_idx ? selected_nodes[selected_node_idx - 1] : selected_nodes.back();
+                    const auto& pr = selected_nodes[selected_node_idx];
+                    // 2. draw selected curves
+                    drawCurveWithOrigin(pl, pr, selected_point_color);
+                    // 3. draw control handler
+                    draw_list->AddLine(ImVec2Add(origin, pl[0]), ImVec2Add(origin, pl[2]), ctrl_point_color, handle_thickness);
+                    draw_list->AddLine(ImVec2Add(origin, pr[0]), ImVec2Add(origin, pr[1]), ctrl_point_color, handle_thickness);
+                }
+                // 4. draw path point
+                for (const auto& path : paths) {
+                    for (const auto& node : path.nodes) {
+                        draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, point_color);
+                    }
+                }
+                // 5. draw control point
+                if (selected_node_idx > 0 || (selected_node_idx == 0 && selected_path.is_closed)) {
+                    const auto&pl = selected_node_idx ? selected_nodes[selected_node_idx - 1] : selected_nodes.back();
+                    const auto&pr = selected_nodes[selected_node_idx];
+                    draw_list->AddCircleFilled(ImVec2Add(origin, pl[2]), point_radius, ctrl_point_color);
+                    draw_list->AddCircleFilled(ImVec2Add(origin, pr[1]), point_radius, ctrl_point_color);
+                }
+                // 6. draw hovered point
+                if (is_hovering_point) {
+                    draw_list->AddCircleFilled(ImVec2Add(origin, *nearest_point_ptr), point_radius, hovered_point_color);
+                }
+                // 7. draw selected point
+                draw_list->AddCircleFilled(ImVec2Add(origin,selected_point), point_radius, selected_point_color);
             }
+
+
+            ImGui::End();
         }
+
+
     }
-};
+
+}
 
 
 
@@ -278,10 +302,8 @@ private:
 //-----------------------------------------------------------------------------
 
 // Demonstrate using the low-level ImDrawList to draw custom shapes.
-static void ShowExampleAppCustomRendering(bool* p_open)
-{
-    if (!ImGui::Begin("Example: Custom rendering", p_open))
-    {
+static void ShowExampleAppCustomRendering(bool *p_open) {
+    if (!ImGui::Begin("Example: Custom rendering", p_open)) {
         ImGui::End();
         return;
     }
@@ -291,11 +313,8 @@ static void ShowExampleAppCustomRendering(bool* p_open)
     // types and ImVec2/ImVec4. Dear ImGui defines overloaded operators but they are internal to imgui.cpp and not
     // exposed outside (to avoid messing with your types) In this example we are not using the maths operators!
 
-    if (ImGui::BeginTabBar("##TabBar"))
-    {
-        if (ImGui::BeginTabItem("Canvas"))
-        {
-            static std::vector<Contour> contours;
+    if (ImGui::BeginTabBar("##TabBar")) {
+        if (ImGui::BeginTabItem("Canvas")) {
             static ImVec2 scrolling{0.0f, 0.0f};
             static ImVec2 mouse_down_pos{0, 0};
             static bool opt_enable_grid = true;
@@ -305,9 +324,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             ImGui::Checkbox("Enable grid", &opt_enable_grid);
             ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
             ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
-            if (ImGui::Button("New contour")) {
-                contours.emplace_back();
-            }
+
 
             // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
             // Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
@@ -328,13 +345,14 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 
             // Draw border and background color
-            ImGuiIO& io = ImGui::GetIO();
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImGuiIO &io = ImGui::GetIO();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(30, 30, 30, 255));
             draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
 
             // This will catch our interactions
-            ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+            ImGui::InvisibleButton("canvas", canvas_sz,
+                                   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             const bool is_hovered = ImGui::IsItemHovered(); // Hovered
             const bool is_active = ImGui::IsItemActive();   // Held
             const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
@@ -369,8 +387,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             // Pan (we use a zero mouse threshold when there's no context menu)
             // You may decide to make that threshold dynamic based on whether the mouse is hovering something etc.
             const float mouse_threshold_for_pan = opt_enable_context_menu ? -1.0f : 0.0f;
-            if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right, mouse_threshold_for_pan))
-            {
+            if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right, mouse_threshold_for_pan)) {
                 scrolling.x += io.MouseDelta.x;
                 scrolling.y += io.MouseDelta.y;
             }
@@ -391,46 +408,20 @@ static void ShowExampleAppCustomRendering(bool* p_open)
 
             // Draw grid + all lines in the canvas
             draw_list->PushClipRect(canvas_p0, canvas_p1, true);
-            if (opt_enable_grid)
-            {
+            if (opt_enable_grid) {
                 const float GRID_STEP = 64.0f;
                 for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-                    draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40));
+                    draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y),
+                                       IM_COL32(200, 200, 200, 40));
                 for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
-                    draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
+                    draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y),
+                                       IM_COL32(200, 200, 200, 40));
             }
 
-            if (!contours.empty()) {
-                Contour &contour = contours.back();
-                contour.updatePointHoveredAndSelected(mouse_pos_in_canvas, ImGui::IsMouseDown(ImGuiMouseButton_Left));
 
-                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                    if (contour.isInserting()) {
-                        contour.finishInserting();
-                    }
 
-                }
-                if (contour.isInserting()) {
-                    contour.updateInsertingPointPos(mouse_pos_in_canvas);
-                }
 
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                    mouse_down_pos = mouse_pos_in_canvas;
-                    if (contour.isInserting()) {
 
-                    }
-
-                }
-
-                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-
-                }
-            }
-
-            for (const Contour &contour : contours) {
-                contour.drawCurves(draw_list, origin);
-                contour.drawPoints(draw_list, origin);
-            }
 
 
 /*
@@ -498,10 +489,9 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Primitives"))
-        {
+        if (ImGui::BeginTabItem("Primitives")) {
             ImGui::PushItemWidth(-ImGui::GetFontSize() * 15);
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
             // Draw gradients
             // (note that those are currently exacerbating our sRGB/Linear issues)
@@ -540,7 +530,8 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             ImGui::SliderInt("N-gon sides", &ngon_sides, 3, 12);
             ImGui::Checkbox("##circlesegmentoverride", &circle_segments_override);
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            circle_segments_override |= ImGui::SliderInt("Circle segments override", &circle_segments_override_v, 3, 40);
+            circle_segments_override |= ImGui::SliderInt("Circle segments override", &circle_segments_override_v, 3,
+                                                         40);
             ImGui::Checkbox("##curvessegmentoverride", &curve_segments_override);
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
             curve_segments_override |= ImGui::SliderInt("Curves segments override", &curve_segments_override_v, 3, 40);
@@ -555,63 +546,90 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             const int curve_segments = curve_segments_override ? curve_segments_override_v : 0;
             float x = p.x + 4.0f;
             float y = p.y + 4.0f;
-            for (int n = 0; n < 2; n++)
-            {
+            for (int n = 0; n < 2; n++) {
                 // First line uses a thickness of 1.0f, second line uses the configurable thickness
                 float th = (n == 0) ? 1.0f : thickness;
-                draw_list->AddNgon(ImVec2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, col, ngon_sides, th);                 x += sz + spacing;  // N-gon
-                draw_list->AddCircle(ImVec2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, col, circle_segments, th);          x += sz + spacing;  // Circle
-                draw_list->AddRect(ImVec2(x, y), ImVec2(x + sz, y + sz), col, 0.0f, ImDrawFlags_None, th);          x += sz + spacing;  // Square
-                draw_list->AddRect(ImVec2(x, y), ImVec2(x + sz, y + sz), col, rounding, ImDrawFlags_None, th);      x += sz + spacing;  // Square with all rounded corners
-                draw_list->AddRect(ImVec2(x, y), ImVec2(x + sz, y + sz), col, rounding, corners_tl_br, th);         x += sz + spacing;  // Square with two rounded corners
-                draw_list->AddTriangle(ImVec2(x+sz*0.5f,y), ImVec2(x+sz, y+sz-0.5f), ImVec2(x, y+sz-0.5f), col, th);x += sz + spacing;  // Triangle
+                draw_list->AddNgon(ImVec2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, ngon_sides, th);
+                x += sz + spacing;  // N-gon
+                draw_list->AddCircle(ImVec2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, circle_segments, th);
+                x += sz + spacing;  // Circle
+                draw_list->AddRect(ImVec2(x, y), ImVec2(x + sz, y + sz), col, 0.0f, ImDrawFlags_None, th);
+                x += sz + spacing;  // Square
+                draw_list->AddRect(ImVec2(x, y), ImVec2(x + sz, y + sz), col, rounding, ImDrawFlags_None, th);
+                x += sz + spacing;  // Square with all rounded corners
+                draw_list->AddRect(ImVec2(x, y), ImVec2(x + sz, y + sz), col, rounding, corners_tl_br, th);
+                x += sz + spacing;  // Square with two rounded corners
+                draw_list->AddTriangle(ImVec2(x + sz * 0.5f, y), ImVec2(x + sz, y + sz - 0.5f),
+                                       ImVec2(x, y + sz - 0.5f), col, th);
+                x += sz + spacing;  // Triangle
                 //draw_list->AddTriangle(ImVec2(x+sz*0.2f,y), ImVec2(x, y+sz-0.5f), ImVec2(x+sz*0.4f, y+sz-0.5f), col, th);x+= sz*0.4f + spacing; // Thin triangle
-                draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y), col, th);                                       x += sz + spacing;  // Horizontal line (note: drawing a filled rectangle will be faster!)
-                draw_list->AddLine(ImVec2(x, y), ImVec2(x, y + sz), col, th);                                       x += spacing;       // Vertical line (note: drawing a filled rectangle will be faster!)
-                draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y + sz), col, th);                                  x += sz + spacing;  // Diagonal line
+                draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y), col, th);
+                x += sz + spacing;  // Horizontal line (note: drawing a filled rectangle will be faster!)
+                draw_list->AddLine(ImVec2(x, y), ImVec2(x, y + sz), col, th);
+                x += spacing;       // Vertical line (note: drawing a filled rectangle will be faster!)
+                draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y + sz), col, th);
+                x += sz + spacing;  // Diagonal line
 
                 // Quadratic Bezier Curve (3 control points)
-                ImVec2 cp3[3] = { ImVec2(x, y + sz * 0.6f), ImVec2(x + sz * 0.5f, y - sz * 0.4f), ImVec2(x + sz, y + sz) };
-                draw_list->AddBezierQuadratic(cp3[0], cp3[1], cp3[2], col, th, curve_segments); x += sz + spacing;
+                ImVec2 cp3[3] = {ImVec2(x, y + sz * 0.6f), ImVec2(x + sz * 0.5f, y - sz * 0.4f),
+                                 ImVec2(x + sz, y + sz)};
+                draw_list->AddBezierQuadratic(cp3[0], cp3[1], cp3[2], col, th, curve_segments);
+                x += sz + spacing;
 
                 // Cubic Bezier Curve (4 control points)
-                ImVec2 cp4[4] = { ImVec2(x, y), ImVec2(x + sz * 1.3f, y + sz * 0.3f), ImVec2(x + sz - sz * 1.3f, y + sz - sz * 0.3f), ImVec2(x + sz, y + sz) };
+                ImVec2 cp4[4] = {ImVec2(x, y), ImVec2(x + sz * 1.3f, y + sz * 0.3f),
+                                 ImVec2(x + sz - sz * 1.3f, y + sz - sz * 0.3f), ImVec2(x + sz, y + sz)};
                 draw_list->AddBezierCubic(cp4[0], cp4[1], cp4[2], cp4[3], col, th, curve_segments);
 
                 x = p.x + 4;
                 y += sz + spacing;
             }
-            draw_list->AddNgonFilled(ImVec2(x + sz * 0.5f, y + sz * 0.5f), sz*0.5f, col, ngon_sides);               x += sz + spacing;  // N-gon
-            draw_list->AddCircleFilled(ImVec2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, col, circle_segments);            x += sz + spacing;  // Circle
-            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + sz), col);                                    x += sz + spacing;  // Square
-            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + sz), col, 10.0f);                             x += sz + spacing;  // Square with all rounded corners
-            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + sz), col, 10.0f, corners_tl_br);              x += sz + spacing;  // Square with two rounded corners
-            draw_list->AddTriangleFilled(ImVec2(x+sz*0.5f,y), ImVec2(x+sz, y+sz-0.5f), ImVec2(x, y+sz-0.5f), col);  x += sz + spacing;  // Triangle
+            draw_list->AddNgonFilled(ImVec2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, ngon_sides);
+            x += sz + spacing;  // N-gon
+            draw_list->AddCircleFilled(ImVec2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, circle_segments);
+            x += sz + spacing;  // Circle
+            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + sz), col);
+            x += sz + spacing;  // Square
+            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + sz), col, 10.0f);
+            x += sz + spacing;  // Square with all rounded corners
+            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + sz), col, 10.0f, corners_tl_br);
+            x += sz + spacing;  // Square with two rounded corners
+            draw_list->AddTriangleFilled(ImVec2(x + sz * 0.5f, y), ImVec2(x + sz, y + sz - 0.5f),
+                                         ImVec2(x, y + sz - 0.5f), col);
+            x += sz + spacing;  // Triangle
             //draw_list->AddTriangleFilled(ImVec2(x+sz*0.2f,y), ImVec2(x, y+sz-0.5f), ImVec2(x+sz*0.4f, y+sz-0.5f), col); x += sz*0.4f + spacing; // Thin triangle
-            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + thickness), col);                             x += sz + spacing;  // Horizontal line (faster than AddLine, but only handle integer thickness)
-            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + thickness, y + sz), col);                             x += spacing * 2.0f;// Vertical line (faster than AddLine, but only handle integer thickness)
-            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + 1, y + 1), col);                                      x += sz;            // Pixel (faster than AddLine)
-            draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + sz, y + sz), IM_COL32(0, 0, 0, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
+            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + sz, y + thickness), col);
+            x += sz + spacing;  // Horizontal line (faster than AddLine, but only handle integer thickness)
+            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + thickness, y + sz), col);
+            x += spacing * 2.0f;// Vertical line (faster than AddLine, but only handle integer thickness)
+            draw_list->AddRectFilled(ImVec2(x, y), ImVec2(x + 1, y + 1), col);
+            x += sz;            // Pixel (faster than AddLine)
+            draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + sz, y + sz), IM_COL32(0, 0, 0, 255),
+                                               IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255),
+                                               IM_COL32(0, 255, 0, 255));
 
             ImGui::Dummy(ImVec2((sz + spacing) * 10.2f, (sz + spacing) * 3.0f));
             ImGui::PopItemWidth();
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("BG/FG draw lists"))
-        {
+        if (ImGui::BeginTabItem("BG/FG draw lists")) {
             static bool draw_bg = true;
             static bool draw_fg = true;
             ImGui::Checkbox("Draw in Background draw list", &draw_bg);
-            ImGui::SameLine(); HelpMarker("The Background draw list will be rendered below every Dear ImGui windows.");
+            ImGui::SameLine();
+            HelpMarker("The Background draw list will be rendered below every Dear ImGui windows.");
             ImGui::Checkbox("Draw in Foreground draw list", &draw_fg);
-            ImGui::SameLine(); HelpMarker("The Foreground draw list will be rendered over every Dear ImGui windows.");
+            ImGui::SameLine();
+            HelpMarker("The Foreground draw list will be rendered over every Dear ImGui windows.");
             ImVec2 window_pos = ImGui::GetWindowPos();
             ImVec2 window_size = ImGui::GetWindowSize();
             ImVec2 window_center = ImVec2(window_pos.x + window_size.x * 0.5f, window_pos.y + window_size.y * 0.5f);
             if (draw_bg)
-                ImGui::GetBackgroundDrawList()->AddCircle(window_center, window_size.x * 0.6f, IM_COL32(255, 0, 0, 200), 0, 10 + 4);
+                ImGui::GetBackgroundDrawList()->AddCircle(window_center, window_size.x * 0.6f, IM_COL32(255, 0, 0, 200),
+                                                          0, 10 + 4);
             if (draw_fg)
-                ImGui::GetForegroundDrawList()->AddCircle(window_center, window_size.y * 0.6f, IM_COL32(0, 255, 0, 200), 0, 10);
+                ImGui::GetForegroundDrawList()->AddCircle(window_center, window_size.y * 0.6f, IM_COL32(0, 255, 0, 200),
+                                                          0, 10);
             ImGui::EndTabItem();
         }
 
@@ -622,8 +640,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
 }
 
 
-int main(int, char**)
-{
+int main(int, char **) {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -645,7 +662,7 @@ int main(int, char**)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #else
     // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
+    const char *glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
@@ -653,7 +670,7 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -662,7 +679,8 @@ int main(int, char**)
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO &io = ImGui::GetIO();
+    (void) io;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -696,8 +714,7 @@ int main(int, char**)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
-    while (!glfwWindowShouldClose(window))
-    {
+    while (!glfwWindowShouldClose(window)) {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -714,6 +731,8 @@ int main(int, char**)
         ShowExampleAppCustomRendering(&open);
         static bool demo_open = true;
         ImGui::ShowDemoWindow(&demo_open);
+        static bool canvas_open = true;
+        CFSUI::Canvas::showCanvas(&canvas_open);
 
 
         // Rendering
@@ -721,7 +740,8 @@ int main(int, char**)
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w,
+                     clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
