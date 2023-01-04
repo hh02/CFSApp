@@ -77,11 +77,9 @@ namespace CFSUI::Canvas {
             static ImVec2 scrolling(0.0f, 0.0f);
             static std::vector<Path> paths;
             static bool is_inserting_node = false;
-            static size_t inserting_node_idx = 0;
             if (ImGui::Button("New contour")) {
                 paths.emplace_back();
                 is_inserting_node = true;
-                inserting_node_idx = 0;
             }
 
 
@@ -122,9 +120,9 @@ namespace CFSUI::Canvas {
                 // set properties
                 static float point_radius = 4.0f;
                 static ImU32 point_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
-                static ImU32 ctrl_point_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
-                static ImU32 selected_point_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
-                static ImU32 hovered_point_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
+                static ImU32 ctrl_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
+                static ImU32 selected_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
+                static ImU32 hovered_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
                 static ImU32 curve_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
                 static float curve_thickness = 2.0f;
                 static float handle_thickness = 1.0f;
@@ -133,17 +131,15 @@ namespace CFSUI::Canvas {
 
                 // hover and select----------------------
                 bool is_hovering_point = false;
-                ImVec2 *point_hovered_ptr;
+                size_t nearest_path_idx;
+                size_t nearest_node_idx;
+                size_t nearest_point_idx;
 
                 static size_t selected_path_idx = 0;
                 static size_t selected_node_idx = 0;
                 static size_t selected_point_idx = 0;
 
                 // update hovered and selected point-----------------
-                size_t nearest_path_idx;
-                size_t nearest_node_idx;
-                size_t nearest_point_idx;
-                const ImVec2* nearest_point_ptr;
                 float min_dis{std::numeric_limits<float>::max()};
 
                 auto updateMin = [&](const ImVec2& point, size_t path_idx, size_t node_idx, size_t point_idx) {
@@ -153,7 +149,6 @@ namespace CFSUI::Canvas {
                         nearest_path_idx = path_idx;
                         nearest_node_idx = node_idx;
                         nearest_point_idx = point_idx;
-                        nearest_point_ptr = &point;
                     }
 
                 };
@@ -172,6 +167,7 @@ namespace CFSUI::Canvas {
                 }
                 if (min_dis < threshold) {
                     is_hovering_point = true;
+
                     // only path point can be selected
                     if (is_mouse_left_button_clicked && nearest_point_idx == 0) {
                         selected_path_idx = nearest_path_idx;
@@ -187,16 +183,17 @@ namespace CFSUI::Canvas {
                 }
 
 
-
                 auto& selected_path = paths[selected_path_idx];
                 auto& selected_nodes = selected_path.nodes;
-                auto& selected_point = selected_nodes[selected_node_idx][selected_point_idx];
+
+                const auto& hovered_path = paths[nearest_path_idx];
+                const auto& hovered_nodes = hovered_path.nodes;
 
 
                 auto insertNodeBack = [&]() {
                     selected_nodes.emplace_back();
                     is_inserting_node = true;
-                    inserting_node_idx = selected_nodes.size() - 1;
+                    selected_node_idx = selected_nodes.size() - 1;
                 };
 
                 if (is_mouse_left_button_clicked) {
@@ -210,16 +207,21 @@ namespace CFSUI::Canvas {
                     }
                 }
 
+                auto& selected_node = selected_nodes[selected_node_idx];
+                auto& selected_node_prev = selected_node_idx ? selected_nodes[selected_node_idx-1] : selected_nodes.back();
+                const auto& hovered_node = hovered_nodes[nearest_node_idx];
+                const auto& hovered_node_prev = nearest_node_idx ? hovered_nodes[nearest_node_idx-1] : hovered_nodes.back();
+
                 // update the position of inserting and related points_selected
                 if (is_inserting_node) {
 
-                    selected_nodes[inserting_node_idx][0] = mouse_pos_in_canvas;
-                    if (inserting_node_idx > 0) {
+                    selected_node[0] = mouse_pos_in_canvas;
+                    if (selected_node_idx > 0) {
                         // modify the control point
-                        const auto& p0 = selected_nodes[inserting_node_idx - 1][0];
-                        auto& p1 = selected_nodes[inserting_node_idx - 1][2];
-                        auto& p2 = selected_nodes[inserting_node_idx][1];
-                        const auto& p3 = selected_nodes[inserting_node_idx][0];
+                        const auto& p0 = selected_node_prev[0];
+                        auto& p1 = selected_node_prev[2];
+                        auto& p2 = selected_node[1];
+                        const auto& p3 = selected_node[0];
                         float dx = (p3.x - p0.x) / 3.0f;
                         float dy = (p3.y - p0.y) / 3.0f;
                         auto d = ImVec2Sub(p3, p0);
@@ -235,53 +237,53 @@ namespace CFSUI::Canvas {
 
                 }
 
-
-                auto drawCurveWithOrigin = [&](const Node& pl, const Node& pr, ImU32 color){
-                    draw_list->AddBezierCubic(ImVec2Add(origin, pl[0]),ImVec2Add(origin, pl[2]),
-                                              ImVec2Add(origin, pr[1]), ImVec2Add(origin, pr[0]),
-                                              color, curve_thickness);
-                };
-                auto drawCtrlHandleWithOrigin = [&](const Node& pl, const Node& pr) {
-                    draw_list->AddLine(ImVec2Add(origin, pl[0]), ImVec2Add(origin,pl[2]), ctrl_point_color, handle_thickness);
-                };
                 // 1. draw normal curves
                 for (const auto& path : paths) {
                     const auto& nodes = path.nodes;
                     for (size_t i = 1; i < nodes.size(); i++) {
-                        drawCurveWithOrigin(nodes[i - 1], nodes[i], curve_color);
+                        draw_list->AddBezierCubic(ImVec2Add(origin, nodes[i-1][0]), ImVec2Add(origin, nodes[i-1][2]),
+                                                  ImVec2Add(origin, nodes[i][1]), ImVec2Add(origin, nodes[i][0]),
+                                                  point_color, curve_thickness);
                     }
                     if (path.is_closed) {
-                        drawCurveWithOrigin(nodes.back(), nodes.front(), curve_color);
+                        draw_list->AddBezierCubic(ImVec2Add(origin, nodes.back()[0]), ImVec2Add(origin, nodes.back()[2]),
+                                                  ImVec2Add(origin, nodes.front()[1]), ImVec2Add(origin, nodes.front()[0]),
+                                                  point_color, curve_thickness);
                     }
                 }
-                if (selected_node_idx > 0 || (selected_node_idx == 0 && selected_path.is_closed)) {
-                    const auto& pl = selected_node_idx ? selected_nodes[selected_node_idx - 1] : selected_nodes.back();
-                    const auto& pr = selected_nodes[selected_node_idx];
-                    // 2. draw selected curves
-                    drawCurveWithOrigin(pl, pr, selected_point_color);
-                    // 3. draw control handler
-                    draw_list->AddLine(ImVec2Add(origin, pl[0]), ImVec2Add(origin, pl[2]), ctrl_point_color, handle_thickness);
-                    draw_list->AddLine(ImVec2Add(origin, pr[0]), ImVec2Add(origin, pr[1]), ctrl_point_color, handle_thickness);
+                // 2. draw hovered curves
+                if (is_hovering_point && !is_inserting_node
+                    && (nearest_node_idx > 0 || (nearest_node_idx == 0 && hovered_path.is_closed))) {
+                    draw_list->AddBezierCubic(ImVec2Add(origin, hovered_node_prev[0]), ImVec2Add(origin, hovered_node_prev[2]),
+                                              ImVec2Add(origin, hovered_node[1]), ImVec2Add(origin, hovered_node[0]),
+                                              hovered_color, curve_thickness);
                 }
-                // 4. draw path point
+                if (selected_node_idx > 0 || (selected_node_idx == 0 && selected_path.is_closed)) {
+                    // 3. draw selected curves
+                    draw_list->AddBezierCubic(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]),
+                                              ImVec2Add(origin, selected_node[1]), ImVec2Add(origin, selected_node[0]),
+                                              selected_color, curve_thickness);
+                    // 4. draw control handler
+                    draw_list->AddLine(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[1]), ctrl_color, handle_thickness);
+                }
+                // 5. draw path point
                 for (const auto& path : paths) {
                     for (const auto& node : path.nodes) {
                         draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, point_color);
                     }
                 }
-                // 5. draw control point
+                // 6. draw control point
                 if (selected_node_idx > 0 || (selected_node_idx == 0 && selected_path.is_closed)) {
-                    const auto&pl = selected_node_idx ? selected_nodes[selected_node_idx - 1] : selected_nodes.back();
-                    const auto&pr = selected_nodes[selected_node_idx];
-                    draw_list->AddCircleFilled(ImVec2Add(origin, pl[2]), point_radius, ctrl_point_color);
-                    draw_list->AddCircleFilled(ImVec2Add(origin, pr[1]), point_radius, ctrl_point_color);
+                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_prev[2]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[1]), point_radius, ctrl_color);
                 }
                 // 6. draw hovered point
-                if (is_hovering_point) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin, *nearest_point_ptr), point_radius, hovered_point_color);
+                if (is_hovering_point && !is_inserting_node) {
+                    draw_list->AddCircleFilled(ImVec2Add(origin, hovered_node[nearest_point_idx]), point_radius, hovered_color);
                 }
                 // 7. draw selected point
-                draw_list->AddCircleFilled(ImVec2Add(origin,selected_point), point_radius, selected_point_color);
+                draw_list->AddCircleFilled(ImVec2Add(origin,selected_node[0]), point_radius, selected_color);
             }
 
 
