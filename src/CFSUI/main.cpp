@@ -3,16 +3,15 @@
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
+#include "my_imconfig.h"
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <cstdio>
 #include <cmath>
 #include <iostream>
+#include <utility>
 #include <vector>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include "my_imconfig.h"
 #define GL_SILENCE_DEPRECATION
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
@@ -55,42 +54,138 @@ inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
 }
 
 
-struct Node {
-    ImVec2 pos;
-    ImVec2 prevCtrlPos;
-    ImVec2 nextCtrlPos;
-    Node() : pos(), prevCtrlPos(), nextCtrlPos() {}
-    explicit Node(ImVec2 thePos) : pos(thePos), prevCtrlPos(), nextCtrlPos() {}
-};
 
+// cubic Bezier curve
+// A curve is selected when its end point is selected;
+struct Curve {
+    // cubic Bezier curve's point's ids
+    size_t p[4];
+    Curve(size_t p0, size_t p1, size_t p2, size_t p3) : p{p0, p1, p2, p3} {}
+};
 
 class Contour {
 public:
-    explicit Contour() {
+    Contour() : point_hovered{-1, 0}, curve_selected{-1} {
+        points.emplace_back();
+        is_inserting = true;
+        is_closed = false;
+
+        // set properties
         color_selected = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
         color_hovered = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
-        color_path_node = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
-        color_ctrl_node = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
+        point_radius = 6;
+        point_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
+        ctrl_point_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
+
+        curve_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
+        curve_thickness = 3.0f;
+
+        threshold = 6.0f;
+
+
     }
 
+    bool isInserting() const {
+        return is_inserting;
+    }
 
-    // Drawing order: normal nodes -> selected nodes -> hovered nodes
+    void addCurveBack() {
+        size_t p0 = curves.empty() ? 0 : curves.back().p[3];
+        points.emplace_back(); // p1
+        size_t p1 = points.size() - 1;
+        points.emplace_back(); // p2;
+        points.emplace_back(); // p3;
+        curves.emplace_back(p0, p1, p1+1, p1+2);
+        is_inserting = true;
+    }
+    // TODO: use pointer as below
+    void updateInsertingPointPos(const ImVec2 &mouse_pos) {
+        if (curves.empty()) {
+            points.front() = mouse_pos;
+            return;
+        } else {
+            Curve &curve = curves.back();
+            const ImVec2 &p0 = points[curve.p[0]];
+            ImVec2 &p1 = points[curve.p[1]];
+            ImVec2 &p2 = points[curve.p[2]];
+            ImVec2 &p3 = points[curve.p[3]];
 
-    void drawNodes(ImDrawList *draw_list, ImVec2 origin) {
-        for (const auto &node : nodes) {
-            draw_list->AddCircleFilled(ImVec2(origin.x+node.pos.x, origin.y+node.pos.y), node_radius_medium, color_path_node);
-            draw_list->AddCircleFilled(ImVec2(origin.x+node.prevCtrlPos.x, origin.y+node.prevCtrlPos.y), node_radius_medium, color_ctrl_node);
-            draw_list->AddCircleFilled(ImVec2(origin.x+node.nextCtrlPos.x, origin.y+node.nextCtrlPos.y), node_radius_medium, color_ctrl_node);
+            p3 = mouse_pos;
+            float dx = (p3.x - p0.x) / 3.0f;
+            float dy = (p3.y - p0.y) / 3.0f;
+            p1 = ImVec2(p0.x + dx, p0.y + dy);
+            p2 = ImVec2(p3.x - dx, p3.y - dy);
+        }
+    }
+    void updatePointHoveredAndSelected(const ImVec2 &mouse_pos, bool is_mouse_down) {
+        std::pair<int, int> nearest_point{-1, -1};
+        float min_dis{std::numeric_limits<float>::max()};
+        getNearestPoint(mouse_pos, nearest_point, min_dis);
+        //std::cout << nearest_point.first << " " << nearest_point.second << " " << min_dis << std::endl;
+        if (min_dis < threshold) {
+            point_hovered = nearest_point;
+            if (is_mouse_down) {
+                curve_selected = nearest_point.first;
+                std::cout << nearest_point.first << std::endl;
+            }
+        } else {
+            point_hovered.first = point_hovered.second = -1;
         }
     }
 
-    void drawSelectedNode(ImDrawList *draw_list, ImVec2 origin) {
+
+
+    void finishInserting() {
+        if (curves.empty()) {
+            addCurveBack();
+        } else {
+            is_inserting = false;
+        }
+    }
+
+    void drawPoints(ImDrawList *draw_list, const ImVec2& origin) const {
+        // 1. draw normal points
+        if (!is_closed) {
+            draw_list->AddCircleFilled(ImVec2(origin.x + points[0].x, origin.y+points[0].y), point_radius, point_color);
+        }
+        for (const Curve &curve : curves) {
+            const size_t *p = curve.p;
+            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y), point_radius, point_color);
+            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y), point_radius, ctrl_point_color);
+            draw_list->AddCircleFilled(ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y), point_radius, ctrl_point_color);
+        }
+        // 2. draw point hovered
+        if (!(point_hovered.first == -1 && point_hovered.second == -1)) {
+            const ImVec2 &ph = point_hovered.first == -1 ? points[0] : points[curves[point_hovered.first].p[point_hovered.second]];
+            draw_list->AddCircleFilled(ImVec2(origin.x+ph.x, origin.y+ph.y), point_radius, color_hovered);
+        }
+        // 3. draw point selected
+        const ImVec2 &ps = curve_selected == -1 ? points[0] : points[curves[curve_selected].p[3]];
+        draw_list->AddCircleFilled(ImVec2(origin.x+ps.x, origin.y+ps.y), point_radius, color_selected);
 
     }
 
-    void drawHoveredNode(ImDrawList *draw_list, ImVec2 origin) {
+    void drawCurves(ImDrawList *draw_list, const ImVec2& origin) const {
+        // 1. draw normal curves
+        for (const Curve &curve : curves) {
+            const size_t *p = curve.p;
+            draw_list->AddBezierCubic(ImVec2(origin.x+points[p[0]].x, origin.y+points[p[0]].y),
+                                      ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y),
+                                      ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y),
+                                      ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y),
+                                      curve_color, curve_thickness);
+        }
+        // 2. draw selected curves
+        if (curve_selected == -1) return;
+        const size_t *p = curves[curve_selected].p;
+        draw_list->AddBezierCubic(ImVec2(origin.x+points[p[0]].x, origin.y+points[p[0]].y),
+                                  ImVec2(origin.x+points[p[1]].x, origin.y+points[p[1]].y),
+                                  ImVec2(origin.x+points[p[2]].x, origin.y+points[p[2]].y),
+                                  ImVec2(origin.x+points[p[3]].x, origin.y+points[p[3]].y),
+                                  color_selected, curve_thickness);
 
     }
+
 
     void setColorSelected(ImU32 color) {
         color_selected = color;
@@ -98,14 +193,23 @@ public:
     void setColorHovered(ImU32 color) {
         color_hovered = color;
     }
-    void setColorPathNode(ImU32 color) {
-        color_path_node = color;
+
+    void setPointColor(ImU32 color) {
+        point_color = color;
     }
-    void setColorCtrlNode(ImU32 color) {
-        color_ctrl_node = color;
+    void setCtrlPointColor(ImU32 color) {
+        ctrl_point_color = color;
     }
 
-    void updateSelectAndHover(ImVec2 mouse_pos) {
+    void setCurveThickness(float thickness) {
+        curve_thickness = thickness;
+    }
+
+    void setCurveColor(ImU32 color) {
+        curve_color = color;
+    }
+
+/*    void updateSelectAndHover(ImVec2 mouse_pos) {
         size_t nearest_node_id = 0;
         int nearest_node_type = 0;
         float distance = std::numeric_limits<float>::max();
@@ -123,45 +227,56 @@ public:
         }
 
 
-    }
+    }*/
 
 
 private:
-    std::vector<Node> nodes;
+
+    std::vector<Curve> curves;
+    std::vector<ImVec2> points;
+
+    float threshold; // threshold for select point
     // states
     bool is_closed;
-    size_t node_id_selected;
-    int node_type_selected;
-    size_t node_id_hovered;
+    bool is_inserting; // is inserting point
+
+    int curve_selected;
+    std::pair<int, int> point_hovered; // {-1, -1} stand for no hovered;
 
 
     // properties
+    // action color
     ImU32 color_selected;
     ImU32 color_hovered;
-    ImU32 color_path_node;
-    ImU32 color_ctrl_node;
+    ImU32 color_inserting;
 
-    float node_radius_small = 2;
-    float node_radius_medium = 3;
-    float node_radius_large = 4;
+    float point_radius;
+    ImU32 point_color;
+    ImU32 ctrl_point_color;
 
-    void getNearestNode(const ImVec2 pos, size_t &nearest_node_id, int &nearest_node_type, float &min_dis) {
-        nearest_node_id = 0;
-        // TODO: use enum
-        nearest_node_type = 0; // 0 for path node, 1 for previous control node, 2 for next control node
+    float curve_thickness;
+    ImU32 curve_color;
+
+    void getNearestPoint(const ImVec2 &pos, std::pair<int, int> &nearest_point, float &min_dis) {
+        nearest_point.first = -1; // id of the curve which the point on, -1 for points[0] (not closed);
+        nearest_point.second = 1; // 1~3 for p[1~3]
         min_dis = std::numeric_limits<float>::max();
-        auto updateMin = [&](size_t curr, const ImVec2 node_pos, int node_type) {
-            float dis = L2Distance(node_pos, pos);
-            if (dis < min_dis) {
-                min_dis = dis;
-                nearest_node_id = curr;
-                nearest_node_type = node_type;
+        if (!is_closed) {
+            float dis = L2Distance(points[0], pos);
+            min_dis = dis;
+            nearest_point.first = -1;
+            nearest_point.second = 0;
+        }
+        for (size_t i = 0; i < curves.size(); i++) {
+            const size_t *p = curves[i].p;
+            for (size_t j = 1; j < 4; j++) {
+                float dis = L2Distance(points[p[j]], pos);
+                if (dis < min_dis) {
+                    min_dis = dis;
+                    nearest_point.first = static_cast<int>(i);
+                    nearest_point.second = static_cast<int>(j);
+                }
             }
-        };
-        for (size_t i = 0; i < nodes.size(); i++) {
-            updateMin(i, nodes[i].pos, 0);
-            updateMin(i, nodes[i].prevCtrlPos, 1);
-            updateMin(i, nodes[i].nextCtrlPos, 2);
         }
     }
 };
@@ -170,6 +285,7 @@ private:
 
 
 //-----------------------------------------------------------------------------
+
 // [SECTION] Example App: Custom Rendering using ImDrawList API / ShowExampleAppCustomRendering()
 //-----------------------------------------------------------------------------
 
@@ -191,10 +307,9 @@ static void ShowExampleAppCustomRendering(bool* p_open)
     {
         if (ImGui::BeginTabItem("Canvas"))
         {
-            int test__test_underline;
-            test__test_underline = 10;
             static std::vector<Contour> contours;
-            static ImVec2 scrolling(0.0f, 0.0f);
+            static ImVec2 scrolling{0.0f, 0.0f};
+            static ImVec2 mouse_down_pos{0, 0};
             static bool opt_enable_grid = true;
             static bool opt_enable_context_menu = true;
             static bool adding_line = false;
@@ -202,6 +317,9 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             ImGui::Checkbox("Enable grid", &opt_enable_grid);
             ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
             ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
+            if (ImGui::Button("New contour")) {
+                contours.emplace_back();
+            }
 
             // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
             // Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
@@ -224,7 +342,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             // Draw border and background color
             ImGuiIO& io = ImGui::GetIO();
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
+            draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(30, 30, 30, 255));
             draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
 
             // This will catch our interactions
@@ -233,7 +351,6 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             const bool is_active = ImGui::IsItemActive();   // Held
             const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
             const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
-            Eigen::Vector2d test(1, 2);
 
 
 
@@ -295,7 +412,40 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                     draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
             }
 
+            if (!contours.empty()) {
+                Contour &contour = contours.back();
+                contour.updatePointHoveredAndSelected(mouse_pos_in_canvas, ImGui::IsMouseDown(ImGuiMouseButton_Left));
 
+                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                    if (contour.isInserting()) {
+                        contour.finishInserting();
+                    }
+
+                }
+                if (contour.isInserting()) {
+                    contour.updateInsertingPointPos(mouse_pos_in_canvas);
+                }
+
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                    mouse_down_pos = mouse_pos_in_canvas;
+                    if (contour.isInserting()) {
+
+                    }
+
+                }
+
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+
+                }
+            }
+
+            for (const Contour &contour : contours) {
+                contour.drawCurves(draw_list, origin);
+                contour.drawPoints(draw_list, origin);
+            }
+
+
+/*
             bool hovered = (min_dis < 5);
             static bool selected = false;
             static const ImVec2 *selected_node_ptr = nullptr;
@@ -350,6 +500,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             } else {
                 ImGui::SetMouseCursor(0);
             }
+*/
 
 
 //            for (int n = 0; n < nodes.Size-1; n++)
