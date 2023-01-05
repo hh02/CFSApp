@@ -10,7 +10,7 @@ include(libigl)
 # Enable the target igl::imgui
 igl_include(imgui)
 
-add_subdirectory(thirdparty)
+add_subdirectory(third_party)
 add_subdirectory(src)
 
 
