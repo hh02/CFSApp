@@ -17,6 +17,8 @@
 #include <vector>
 #include <array>
 #include "main.h"
+#include "sml.hpp"
+namespace sml=boost::sml;
 
 namespace CFSUI::Canvas {
     using Node = std::array<ImVec2, 3>;
@@ -26,7 +28,7 @@ namespace CFSUI::Canvas {
         bool is_closed;
 
         // A path at least has one node
-        Path() : nodes(1), is_closed(false) {}
+        Path() : nodes(), is_closed(false) {}
     };
 
 
