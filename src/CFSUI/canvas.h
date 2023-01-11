@@ -43,7 +43,7 @@ namespace CFSUI::Canvas {
         Image(GLuint image_texture, int image_width, int image_height) :
                 texture(image_texture),
                 width(image_width), height(image_height),
-                p_min(0.0f, 0.0f), p_max(image_width, image_height) {}
+                p_min(10.0f, 10.0f), p_max(10.0f+image_width, 10.0f+image_height) {}
     };
 
 

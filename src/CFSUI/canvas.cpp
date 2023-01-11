@@ -11,6 +11,7 @@
 #include "main.h"
 #include "canvas.h"
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_WINDOWS_UTF8
 #include "stb_image.h"
 
 
@@ -68,10 +69,17 @@ namespace CFSUI::Canvas {
                         filterPatterns,
                         "image files",
                         0);
+                std::cout << filename << std::endl;
+                bool ret = false;
                 int image_width = 0;
                 int image_height = 0;
                 GLuint image_texture = 0;
-                bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
+/*#ifdef _WIN32
+                if (tinyfd_winUtf8)
+                    ret = LoadTextureFromFile(tinyfd_utf8to16(filename), &image_texture, &image_width, &image_height);
+                else
+#endif*/
+                ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
                 IM_ASSERT(ret);
                 images.emplace_back(image_texture, image_width, image_height);
             }
@@ -350,7 +358,10 @@ namespace CFSUI::Canvas {
 
             // draw images
             for (const auto& image : images) {
-                draw_list->AddImage((void*)(intptr_t)image.texture, image.p_min, image.p_max, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+                draw_list->AddImage((void*)(intptr_t)image.texture,
+                                    ImVec2Add(origin, image.p_min), ImVec2Add(origin, image.p_max),
+//                                    image.p_min, image.p_max,
+                                    ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
             }
 
 
