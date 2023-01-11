@@ -1,8 +1,3 @@
-// Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
-// (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
-// If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
-// Read online: https://github.com/ocornut/imgui/tree/master/docs
-
 #include "my_imconfig.h"
 #include <imgui.h>
 #include <cstdio>
@@ -60,8 +55,9 @@ namespace CFSUI::Canvas {
             static std::vector<Path> paths;
             static std::vector<Image> images;
             bool is_clicked_button = ImGui::Button("New path");
-            static char const * filterPatterns[2] = { "*.jpg", "*.png" };
+            ImGui::SameLine();
             if (ImGui::Button("Open image")) {
+                static char const * filterPatterns[2] = { "*.jpg", "*.png" };
                 auto filename = tinyfd_openFileDialog(
                         "Open an image",
                         "",
@@ -112,11 +108,10 @@ namespace CFSUI::Canvas {
             // set properties
             static float point_radius = 4.0f;
             static const float radius_bigger_than = 2.0f;
-            static ImU32 point_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
             static ImU32 ctrl_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
+            static ImU32 normal_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
             static ImU32 selected_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
             static ImU32 hovered_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
-            static ImU32 curve_color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
             static float curve_thickness = 2.0f;
             static float handle_thickness = 1.0f;
             // TODO: use better name
@@ -338,7 +333,7 @@ namespace CFSUI::Canvas {
                 mouse_moved_distance.y += std::fabsf(io.MouseDelta.y);
             };
             static auto draw_big_start_point = [draw_list, &origin] {
-                draw_list->AddCircleFilled(ImVec2Add(origin, paths[selected_path_idx].nodes.front()[0]), point_radius+ radius_bigger_than, point_color);
+                draw_list->AddCircleFilled(ImVec2Add(origin, paths[selected_path_idx].nodes.front()[0]), point_radius+ radius_bigger_than, normal_color);
 
             };
 
@@ -405,18 +400,19 @@ namespace CFSUI::Canvas {
                 const auto& selected_node_prev = selected_nodes[selected_node_prev_idx];
                 const auto& selected_node_next = selected_nodes[selected_node_next_idx];
 
+                // layer one----------
                 // 1. draw normal curves
                 for (const auto& path : paths) {
                     const auto& nodes = path.nodes;
                     for (size_t i = 1; i < nodes.size(); i++) {
                         draw_list->AddBezierCubic(ImVec2Add(origin, nodes[i-1][0]), ImVec2Add(origin, nodes[i-1][2]),
                                                   ImVec2Add(origin, nodes[i][1]), ImVec2Add(origin, nodes[i][0]),
-                                                  point_color, curve_thickness);
+                                                  normal_color, curve_thickness);
                     }
                     if (path.is_closed) {
                         draw_list->AddBezierCubic(ImVec2Add(origin, nodes.back()[0]), ImVec2Add(origin, nodes.back()[2]),
                                                   ImVec2Add(origin, nodes.front()[1]), ImVec2Add(origin, nodes.front()[0]),
-                                                  point_color, curve_thickness);
+                                                  normal_color, curve_thickness);
                     }
                 }
                 // 2. draw selected curves
@@ -444,10 +440,11 @@ namespace CFSUI::Canvas {
                         draw_list->AddLine(ImVec2Add(origin, selected_node_next[0]), ImVec2Add(origin, selected_node_next[1]), ctrl_color, handle_thickness);
                     }
                 }
+                // layer two----------
                 // 4. draw path point
                 for (const auto& path : paths) {
                     for (const auto node : path.nodes) {
-                        draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, point_color);
+                        draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, normal_color);
                     }
                 }
                 // 5. draw selected point and control point
@@ -463,7 +460,7 @@ namespace CFSUI::Canvas {
                     }
                 }
                 // 6. draw hovered point
-                if (selected_type == 0) {
+                if (hovered_type == 0) {
                     draw_list->AddCircleFilled(ImVec2Add(origin, hovered_node[hovered_point_idx]), point_radius, hovered_color);
                 }
             }
