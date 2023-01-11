@@ -69,17 +69,10 @@ namespace CFSUI::Canvas {
                         filterPatterns,
                         "image files",
                         0);
-                std::cout << filename << std::endl;
-                bool ret = false;
                 int image_width = 0;
                 int image_height = 0;
                 GLuint image_texture = 0;
-/*#ifdef _WIN32
-                if (tinyfd_winUtf8)
-                    ret = LoadTextureFromFile(tinyfd_utf8to16(filename), &image_texture, &image_width, &image_height);
-                else
-#endif*/
-                ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
+                bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
                 IM_ASSERT(ret);
                 images.emplace_back(image_texture, image_width, image_height);
             }
@@ -356,6 +349,7 @@ namespace CFSUI::Canvas {
                 ImGui::SetMouseCursor(0);
             }
 
+            draw_list->PushClipRect(canvas_p0, canvas_p1, true);
             // draw images
             for (const auto& image : images) {
                 draw_list->AddImage((void*)(intptr_t)image.texture,
@@ -437,6 +431,7 @@ namespace CFSUI::Canvas {
                     draw_list->AddCircleFilled(ImVec2Add(origin, hovered_node[nearest_point_idx]), point_radius, hovered_color);
                 }
             }
+            draw_list->PopClipRect();
 
 
             ImGui::End();
