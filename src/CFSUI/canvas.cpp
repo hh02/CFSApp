@@ -10,18 +10,71 @@
 #include <vector>
 #include "main.h"
 #include "canvas.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 
 namespace CFSUI::Canvas {
     const float eps = 2.0f;
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
         return std::hypot(a.x - b.x, a.y - b.y);
     }
+    // Simple helper function to load an image into a OpenGL texture with common settings
+    bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height)
+    {
+        // Load from file
+        int image_width = 0;
+        int image_height = 0;
+        unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+        if (image_data == NULL)
+            return false;
 
+        // Create a OpenGL texture identifier
+        GLuint image_texture;
+        glGenTextures(1, &image_texture);
+        glBindTexture(GL_TEXTURE_2D, image_texture);
+
+        // Setup filtering parameters for display
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
+
+        // Upload pixels into texture
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(__EMSCRIPTEN__)
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image_width, image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+        stbi_image_free(image_data);
+
+        *out_texture = image_texture;
+        *out_width = image_width;
+        *out_height = image_height;
+
+        return true;
+    }
     void showCanvas(bool *open) {
         if (ImGui::Begin("Canvas", open)) {
             static ImVec2 scrolling(0.0f, 0.0f);
             static std::vector<Path> paths;
+            static std::vector<Image> images;
             bool is_clicked_button = ImGui::Button("New path");
+            static char const * filterPatterns[2] = { "*.jpg", "*.png" };
+            if (ImGui::Button("Open image")) {
+                auto filename = tinyfd_openFileDialog(
+                        "Open an image",
+                        "",
+                        2,
+                        filterPatterns,
+                        "image files",
+                        0);
+                int image_width = 0;
+                int image_height = 0;
+                GLuint image_texture = 0;
+                bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
+                IM_ASSERT(ret);
+                images.emplace_back(image_texture, image_width, image_height);
+            }
 
             ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
@@ -295,14 +348,15 @@ namespace CFSUI::Canvas {
                 ImGui::SetMouseCursor(0);
             }
 
-//            state_machine.visit_current_states([](auto state) { std::cout << state.c_str() << std::endl; });
+            // draw images
+            for (const auto& image : images) {
+                draw_list->AddImage((void*)(intptr_t)image.texture, image.p_min, image.p_max, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+            }
+
 
             if (!paths.empty()) {
                 const auto& hovered_path = paths[nearest_path_idx];
                 const auto& hovered_node = hovered_path.nodes[nearest_node_idx];
-                const auto& hovered_node_prev = nearest_node_idx ? hovered_path.nodes[nearest_node_idx - 1] : hovered_path.nodes.back();
-                const bool is_hovering_curve = is_hovering_point && nearest_point_idx == 0
-                                               && (nearest_node_idx > 0 || (nearest_node_idx == 0 && hovered_path.is_closed));
 
 
                 const auto& selected_nodes = paths[selected_path_idx].nodes;

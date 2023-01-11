@@ -18,6 +18,9 @@
 #include <array>
 #include "main.h"
 #include "sml.hpp"
+#include "tinyfiledialogs.h"
+// #include <glad/glad.h>
+#include <GLFW/glfw3.h> // Will drag system OpenGL headers
 namespace sml=boost::sml;
 
 namespace CFSUI::Canvas {
@@ -29,6 +32,18 @@ namespace CFSUI::Canvas {
 
         // A path at least has one node
         Path() : nodes(), is_closed(false) {}
+    };
+
+    struct Image {
+        GLuint texture;
+        int width;
+        int height;
+        ImVec2 p_min;
+        ImVec2 p_max;
+        Image(GLuint image_texture, int image_width, int image_height) :
+                texture(image_texture),
+                width(image_width), height(image_height),
+                p_min(0.0f, 0.0f), p_max(image_width, image_height) {}
     };
 
 

@@ -3,7 +3,6 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <cstdio>
-#include <iostream>
 #include "main.h"
 #include "canvas.h"
 
