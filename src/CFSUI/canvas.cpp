@@ -168,7 +168,7 @@ namespace CFSUI::Canvas {
                 return std::hypot(mouse_moved_distance.x, mouse_moved_distance.y) > eps;
             };
             static auto is_open_point = [] {
-                return (!paths[hovered_path_idx].is_closed)
+                return hovered_type == 0 && (!paths[hovered_path_idx].is_closed)
                        && (hovered_node_idx == paths[hovered_path_idx].nodes.size()-1)
                        && hovered_point_idx == 0;
             };
@@ -378,7 +378,8 @@ namespace CFSUI::Canvas {
                 ImGui::SetMouseCursor(0);
             }
 
-//            state_machine.visit_current_states([](auto state) { std::cout << state.c_str() << std::endl; });
+            state_machine.visit_current_states([](auto state) { std::cout << state.c_str() << std::endl; });
+            std::cout << selected_type << std::endl;
 
             draw_list->PushClipRect(canvas_p0, canvas_p1, true);
             // draw images
@@ -390,100 +391,95 @@ namespace CFSUI::Canvas {
             }
 
 
-            if (!paths.empty()) {
-                const auto& hovered_path = paths[hovered_path_idx];
-                const auto& hovered_node = hovered_path.nodes[hovered_node_idx];
+            Node dummy_node;
+            const auto &selected_node = selected_type == 0 ? paths[selected_path_idx].nodes[selected_node_idx] : dummy_node;
+            const auto &selected_node_prev = has_prev ? paths[selected_path_idx].nodes[selected_node_prev_idx] : dummy_node;
+            const auto &selected_node_next = has_next? paths[selected_path_idx].nodes[selected_node_next_idx] : dummy_node;
 
 
-                const auto& selected_nodes = paths[selected_path_idx].nodes;
-                const auto& selected_node = selected_nodes[selected_node_idx];
-                const auto& selected_node_prev = selected_nodes[selected_node_prev_idx];
-                const auto& selected_node_next = selected_nodes[selected_node_next_idx];
-
-                // layer one----------
-                // 1. draw normal curves
-                for (const auto& path : paths) {
-                    const auto& nodes = path.nodes;
-                    for (size_t i = 1; i < nodes.size(); i++) {
-                        draw_list->AddBezierCubic(ImVec2Add(origin, nodes[i-1][0]), ImVec2Add(origin, nodes[i-1][2]),
-                                                  ImVec2Add(origin, nodes[i][1]), ImVec2Add(origin, nodes[i][0]),
-                                                  normal_color, curve_thickness);
-                    }
-                    if (path.is_closed) {
-                        draw_list->AddBezierCubic(ImVec2Add(origin, nodes.back()[0]), ImVec2Add(origin, nodes.back()[2]),
-                                                  ImVec2Add(origin, nodes.front()[1]), ImVec2Add(origin, nodes.front()[0]),
-                                                  normal_color, curve_thickness);
-                    }
+            // layer one----------
+            // 1. draw normal curves
+            for (const auto& path : paths) {
+                const auto& nodes = path.nodes;
+                for (size_t i = 1; i < nodes.size(); i++) {
+                    draw_list->AddBezierCubic(ImVec2Add(origin, nodes[i-1][0]), ImVec2Add(origin, nodes[i-1][2]),
+                                              ImVec2Add(origin, nodes[i][1]), ImVec2Add(origin, nodes[i][0]),
+                                              normal_color, curve_thickness);
                 }
-                // 2. draw selected
-                // 2.1 selected node
-                if (selected_type == 0) {
-                    // draw curves
-                    if (has_prev) {
-                        draw_list->AddBezierCubic(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]),
-                                                  ImVec2Add(origin, selected_node[1]), ImVec2Add(origin, selected_node[0]),
-                                                  selected_color, curve_thickness);
-                    }
-                    if (has_next) {
-                        draw_list->AddBezierCubic(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[2]),
-                                                  ImVec2Add(origin, selected_node_next[1]), ImVec2Add(origin, selected_node_next[0]),
-                                                  selected_color, curve_thickness);
-                    }
-                    // draw control handle
-                    if (has_prev) {
-                        draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[1]), ctrl_color, handle_thickness);
-                        draw_list->AddLine(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]), ctrl_color, handle_thickness);
-                    }
-                    if (has_next) {
-                        draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[2]), ctrl_color, handle_thickness);
-                        draw_list->AddLine(ImVec2Add(origin, selected_node_next[0]), ImVec2Add(origin, selected_node_next[1]), ctrl_color, handle_thickness);
-                    }
+                if (path.is_closed) {
+                    draw_list->AddBezierCubic(ImVec2Add(origin, nodes.back()[0]), ImVec2Add(origin, nodes.back()[2]),
+                                              ImVec2Add(origin, nodes.front()[1]), ImVec2Add(origin, nodes.front()[0]),
+                                              normal_color, curve_thickness);
                 }
+            }
+            // 2. draw selected
+            // 2.1 selected node
+            if (selected_type == 0) {
+                // draw curves
+                if (has_prev) {
+                    draw_list->AddBezierCubic(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]),
+                                              ImVec2Add(origin, selected_node[1]), ImVec2Add(origin, selected_node[0]),
+                                              selected_color, curve_thickness);
+                }
+                if (has_next) {
+                    draw_list->AddBezierCubic(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[2]),
+                                              ImVec2Add(origin, selected_node_next[1]), ImVec2Add(origin, selected_node_next[0]),
+                                              selected_color, curve_thickness);
+                }
+                // draw control handle
+                if (has_prev) {
+                    draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[1]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]), ctrl_color, handle_thickness);
+                }
+                if (has_next) {
+                    draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[2]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(ImVec2Add(origin, selected_node_next[0]), ImVec2Add(origin, selected_node_next[1]), ctrl_color, handle_thickness);
+                }
+            }
                 // 2.2 selected image
-                else if (selected_type == 1) {
-                    draw_list->AddRect(ImVec2Add(origin, selected_image_ptr->p_min),
-                                       ImVec2Add(origin,selected_image_ptr->p_max),
-                                       selected_color, 0.0f, 0, 2.0f);
+            else if (selected_type == 1) {
+                draw_list->AddRect(ImVec2Add(origin, selected_image_ptr->p_min),
+                                   ImVec2Add(origin,selected_image_ptr->p_max),
+                                   selected_color, 0.0f, 0, 2.0f);
 
-                }
+            }
                 // 2.3 selected path
-                else if (selected_type == 2) {
+            else if (selected_type == 2) {
 
+            }
+            // layer two----------
+            // 3. draw normal path point
+            for (const auto& path : paths) {
+                for (const auto node : path.nodes) {
+                    draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, normal_color);
                 }
-                // layer two----------
-                // 3. draw normal path point
-                for (const auto& path : paths) {
-                    for (const auto node : path.nodes) {
-                        draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, normal_color);
-                    }
+            }
+            // 4. draw selected
+            // 4.1 draw selected point and control point
+            if (selected_type == 0) {
+                draw_list->AddCircleFilled(ImVec2Add(origin,selected_node[0]), point_radius, selected_color);
+                if (has_prev) {
+                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[1]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_prev[2]), point_radius, ctrl_color);
                 }
-                // 4. draw selected
-                // 4.1 draw selected point and control point
-                if (selected_type == 0) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin,selected_node[0]), point_radius, selected_color);
-                    if (has_prev) {
-                        draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[1]), point_radius, ctrl_color);
-                        draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_prev[2]), point_radius, ctrl_color);
-                    }
-                    if (has_next) {
-                        draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[2]), point_radius, ctrl_color);
-                        draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_next[1]), point_radius, ctrl_color);
-                    }
+                if (has_next) {
+                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[2]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_next[1]), point_radius, ctrl_color);
                 }
+            }
                 // 4.2 draw selected image's point
-                else if (selected_type == 1) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_image_ptr->p_min), point_radius, selected_color);
-                    draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(selected_image_ptr->p_min.x, selected_image_ptr->p_max.y)), point_radius, selected_color);
-                    draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(selected_image_ptr->p_max.x, selected_image_ptr->p_min.y)), point_radius, selected_color);
-                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_image_ptr->p_max), point_radius, selected_color);
-                }
-                else if (selected_type == 2) {
+            else if (selected_type == 1) {
+                draw_list->AddCircleFilled(ImVec2Add(origin, selected_image_ptr->p_min), point_radius, selected_color);
+                draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(selected_image_ptr->p_min.x, selected_image_ptr->p_max.y)), point_radius, selected_color);
+                draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(selected_image_ptr->p_max.x, selected_image_ptr->p_min.y)), point_radius, selected_color);
+                draw_list->AddCircleFilled(ImVec2Add(origin, selected_image_ptr->p_max), point_radius, selected_color);
+            }
+            else if (selected_type == 2) {
 
-                }
-                // 6. draw hovered point
-                if (hovered_type == 0) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin, hovered_node[hovered_point_idx]), point_radius, hovered_color);
-                }
+            }
+            // 6. draw hovered point
+            if (hovered_type == 0) {
+                draw_list->AddCircleFilled(ImVec2Add(origin, paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]), point_radius, hovered_color);
             }
             draw_list->PopClipRect();
 
