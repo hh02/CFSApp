@@ -34,6 +34,13 @@ namespace CFSUI::Canvas {
         Path() : nodes(), is_closed(false) {}
     };
 
+    enum class ObjectType {
+        None,
+        PathPoint,
+        CtrlPoint,
+        Path,
+        Image,
+    };
     struct Image {
         GLuint texture;
         int width;
