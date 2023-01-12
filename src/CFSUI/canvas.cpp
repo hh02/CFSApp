@@ -119,14 +119,14 @@ namespace CFSUI::Canvas {
 
             // hover and select----------------------
             // TODO use enum
-            static int hovered_type = -1; // -1, not hover, 0 point, 1 image
+            static int hovered_type = -1; // -1, not hover, 0 path point, 1 image, 2 control point
             static size_t hovered_path_idx = 0;
             static size_t hovered_node_idx = 0;
             static size_t hovered_point_idx = 0;
             static Image* hovered_image_ptr = nullptr;
 
             // TODO: use enum
-            static int selected_type = -1; // -1, not select, 0 node, 1 image, 2 path
+            static int selected_type = -1; // -1, not select, 0 path point, 1 image,
             static size_t selected_path_idx = 0;
             static size_t selected_node_idx = 0;
             static Image* selected_image_ptr = nullptr;
@@ -169,8 +169,7 @@ namespace CFSUI::Canvas {
             };
             static auto is_open_point = [] {
                 return hovered_type == 0 && (!paths[hovered_path_idx].is_closed)
-                       && (hovered_node_idx == paths[hovered_path_idx].nodes.size()-1)
-                       && hovered_point_idx == 0;
+                       && (hovered_node_idx == paths[hovered_path_idx].nodes.size()-1);
             };
 
 
@@ -206,7 +205,7 @@ namespace CFSUI::Canvas {
 
             static auto update_selected = [] {
                 // select node only when select the path point of the node
-                if (hovered_type == 0 && hovered_point_idx == 0) {
+                if (hovered_type == 0) {
                     selected_type = 0;
                     selected_path_idx = hovered_path_idx;
                     selected_node_idx = hovered_node_idx;
@@ -252,40 +251,42 @@ namespace CFSUI::Canvas {
             static auto update_hovered = [&mouse_pos_in_canvas] {
                 float min_dis = std::numeric_limits<float>::max();
 
-                auto updateMin = [&mouse_pos_in_canvas, &min_dis](const ImVec2& point, size_t path_idx, size_t node_idx, size_t point_idx) {
+                auto updateMin = [&mouse_pos_in_canvas, &min_dis](const ImVec2& point, int type, size_t path_idx, size_t node_idx, size_t point_idx) {
                     float dis = L2Distance(point, mouse_pos_in_canvas);
                     if (dis < min_dis) {
                         min_dis = dis;
+                        hovered_type = type;
                         hovered_path_idx = path_idx;
                         hovered_node_idx = node_idx;
                         hovered_point_idx = point_idx;
                     }
                 };
                 // get the nearest point
+                // ctrl point
+                if (selected_type == 0) {
+                    const auto& selected_nodes = paths[selected_path_idx].nodes;
+                    updateMin(selected_nodes[selected_node_idx][1], 2, selected_path_idx, selected_node_idx, 1);
+                    updateMin(selected_nodes[selected_node_idx][2], 2, selected_path_idx, selected_node_idx, 2);
+                    if (has_prev) {
+                        updateMin(selected_nodes[selected_node_prev_idx][2], 2, selected_path_idx, selected_node_prev_idx, 2);
+                    }
+                    if (has_next) {
+                        updateMin(selected_nodes[selected_node_next_idx][1], 2, selected_path_idx, selected_node_next_idx, 1);
+                    }
+
+                }
                 // path point
                 for (size_t i = 0; i < paths.size(); i++) {
                     const auto& nodes = paths[i].nodes;
                     for (size_t j = 0; j < nodes.size(); j++) {
-                        updateMin(nodes[j][0], i, j, 0);
+                        updateMin(nodes[j][0], 0, i, j, 0);
                     }
                 }
-                // ctrl point
-                if (selected_type == 0) {
-                    const auto& selected_nodes = paths[selected_path_idx].nodes;
-                    updateMin(selected_nodes[selected_node_idx][1], selected_path_idx, selected_node_idx, 1);
-                    updateMin(selected_nodes[selected_node_idx][2], selected_path_idx, selected_node_idx, 2);
-                    if (has_prev) {
-                        updateMin(selected_nodes[selected_node_prev_idx][2], selected_path_idx, selected_node_prev_idx, 2);
-                    }
-                    if (has_next) {
-                        updateMin(selected_nodes[selected_node_next_idx][1], selected_path_idx, selected_node_next_idx, 1);
-                    }
 
-                }
                 if (min_dis < threshold) {
-                    hovered_type = 0;
                     return;
                 }
+
                 for (auto it = images.rbegin(); it != images.rend(); it++) {
                     if ((mouse_pos_in_canvas.x >= it->p_min.x && mouse_pos_in_canvas.x <= it->p_max.x)
                     && (mouse_pos_in_canvas.y >= it->p_min.y && mouse_pos_in_canvas.y <= it->p_max.y)) {
@@ -309,16 +310,13 @@ namespace CFSUI::Canvas {
                 std::vector<ImVec2*>().swap(moving_points_ptr);
                 if (hovered_type == 0) {
                     moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]);
-                    if (hovered_point_idx == 0) {
-                        moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][1]);
-                        moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][2]);
-                    }
-                    return;
-                }
-                if (hovered_type == 1) {
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][1]);
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][2]);
+                } else if (hovered_type == 2) {
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]);
+                } else if (hovered_type == 1) {
                     moving_points_ptr.emplace_back(&hovered_image_ptr->p_min);
                     moving_points_ptr.emplace_back(&hovered_image_ptr->p_max);
-                    return;
                 }
                 // moving path
             };
@@ -372,7 +370,7 @@ namespace CFSUI::Canvas {
                 state_machine.process_event(mouse_left_released{});
             }
 
-            if (hovered_type == 0) {
+            if (hovered_type == 0 || hovered_type == 2) {
                 ImGui::SetMouseCursor(7);
             } else {
                 ImGui::SetMouseCursor(0);
@@ -382,7 +380,7 @@ namespace CFSUI::Canvas {
             std::cout << selected_type << std::endl;
 
             draw_list->PushClipRect(canvas_p0, canvas_p1, true);
-            // draw images
+            // 1. draw images
             for (const auto& image : images) {
                 draw_list->AddImage((void*)(intptr_t)image.texture,
                                     ImVec2Add(origin, image.p_min), ImVec2Add(origin, image.p_max),
@@ -390,15 +388,13 @@ namespace CFSUI::Canvas {
                                     ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
             }
 
-
             Node dummy_node;
             const auto &selected_node = selected_type == 0 ? paths[selected_path_idx].nodes[selected_node_idx] : dummy_node;
             const auto &selected_node_prev = has_prev ? paths[selected_path_idx].nodes[selected_node_prev_idx] : dummy_node;
             const auto &selected_node_next = has_next? paths[selected_path_idx].nodes[selected_node_next_idx] : dummy_node;
 
-
             // layer one----------
-            // 1. draw normal curves
+            // 2. draw normal curves
             for (const auto& path : paths) {
                 const auto& nodes = path.nodes;
                 for (size_t i = 1; i < nodes.size(); i++) {
@@ -412,8 +408,8 @@ namespace CFSUI::Canvas {
                                               normal_color, curve_thickness);
                 }
             }
-            // 2. draw selected
-            // 2.1 selected node
+            // 3. draw selected
+            // 3.1 selected node
             if (selected_type == 0) {
                 // draw curves
                 if (has_prev) {
@@ -436,26 +432,26 @@ namespace CFSUI::Canvas {
                     draw_list->AddLine(ImVec2Add(origin, selected_node_next[0]), ImVec2Add(origin, selected_node_next[1]), ctrl_color, handle_thickness);
                 }
             }
-                // 2.2 selected image
+            // 3.2 selected image
             else if (selected_type == 1) {
                 draw_list->AddRect(ImVec2Add(origin, selected_image_ptr->p_min),
                                    ImVec2Add(origin,selected_image_ptr->p_max),
                                    selected_color, 0.0f, 0, 2.0f);
 
             }
-                // 2.3 selected path
+            // 3.3 selected path
             else if (selected_type == 2) {
 
             }
             // layer two----------
-            // 3. draw normal path point
+            // 4. draw normal path point
             for (const auto& path : paths) {
                 for (const auto node : path.nodes) {
                     draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, normal_color);
                 }
             }
-            // 4. draw selected
-            // 4.1 draw selected point and control point
+            // 5. draw selected
+            // 5.1 draw selected point and control point
             if (selected_type == 0) {
                 draw_list->AddCircleFilled(ImVec2Add(origin,selected_node[0]), point_radius, selected_color);
                 if (has_prev) {
@@ -467,7 +463,7 @@ namespace CFSUI::Canvas {
                     draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_next[1]), point_radius, ctrl_color);
                 }
             }
-                // 4.2 draw selected image's point
+            // 5.2 draw selected image's point
             else if (selected_type == 1) {
                 draw_list->AddCircleFilled(ImVec2Add(origin, selected_image_ptr->p_min), point_radius, selected_color);
                 draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(selected_image_ptr->p_min.x, selected_image_ptr->p_max.y)), point_radius, selected_color);
@@ -478,7 +474,7 @@ namespace CFSUI::Canvas {
 
             }
             // 6. draw hovered point
-            if (hovered_type == 0) {
+            if (hovered_type == 0 || hovered_type == 2) {
                 draw_list->AddCircleFilled(ImVec2Add(origin, paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]), point_radius, hovered_color);
             }
             draw_list->PopClipRect();
