@@ -40,6 +40,14 @@ namespace CFSUI::Canvas {
         CtrlPoint,
         Path,
         Image,
+        BoundTop,
+        BoundBottom,
+        BoundLeft,
+        BoundRight,
+        BoundTopLeft,
+        BoundTopRight,
+        BoundBottomLeft,
+        BoundBottomRight,
     };
     struct Image {
         GLuint texture;

@@ -116,6 +116,7 @@ namespace CFSUI::Canvas {
             static float handle_thickness = 1.5f;
             // TODO: use better name
             static float threshold = 6.0f; // distance threshold for selecting a point
+            static float handle_threshold = 4.0f;
 
             // hover and select----------------------
             static ObjectType hovered_type = ObjectType::None;
@@ -127,7 +128,7 @@ namespace CFSUI::Canvas {
             static ObjectType selected_type = ObjectType::None;
             static size_t selected_path_idx = 0;
             static size_t selected_node_idx = 0;
-            static Image* selected_image_ptr = nullptr;
+            static const Image* selected_image_ptr = nullptr;
             static bool has_prev = false;
             static size_t selected_node_prev_idx = 0;
             static bool has_next = false;
@@ -249,8 +250,7 @@ namespace CFSUI::Canvas {
             static auto update_hovered = [&mouse_pos_in_canvas] {
                 float min_dis = std::numeric_limits<float>::max();
 
-                auto updateMin = [&mouse_pos_in_canvas, &min_dis](const ImVec2& point, ObjectType type, size_t path_idx, size_t node_idx, size_t point_idx) {
-                    float dis = L2Distance(point, mouse_pos_in_canvas);
+                auto updateMin = [&min_dis](float dis, ObjectType type, size_t path_idx, size_t node_idx, size_t point_idx) {
                     if (dis < min_dis) {
                         min_dis = dis;
                         hovered_type = type;
@@ -263,13 +263,13 @@ namespace CFSUI::Canvas {
                 // ctrl point
                 if (selected_type == ObjectType::PathPoint) {
                     const auto& selected_nodes = paths[selected_path_idx].nodes;
-                    updateMin(selected_nodes[selected_node_idx][1], ObjectType::CtrlPoint, selected_path_idx, selected_node_idx, 1);
-                    updateMin(selected_nodes[selected_node_idx][2], ObjectType::CtrlPoint, selected_path_idx, selected_node_idx, 2);
+                    updateMin(L2Distance(selected_nodes[selected_node_idx][1], mouse_pos_in_canvas),ObjectType::CtrlPoint, selected_path_idx, selected_node_idx, 1);
+                    updateMin(L2Distance(selected_nodes[selected_node_idx][2], mouse_pos_in_canvas),ObjectType::CtrlPoint, selected_path_idx, selected_node_idx, 2);
                     if (has_prev) {
-                        updateMin(selected_nodes[selected_node_prev_idx][2], ObjectType::CtrlPoint, selected_path_idx, selected_node_prev_idx, 2);
+                        updateMin(L2Distance(selected_nodes[selected_node_prev_idx][2], mouse_pos_in_canvas),ObjectType::CtrlPoint, selected_path_idx, selected_node_prev_idx, 2);
                     }
                     if (has_next) {
-                        updateMin(selected_nodes[selected_node_next_idx][1], ObjectType::CtrlPoint, selected_path_idx, selected_node_next_idx, 1);
+                        updateMin(L2Distance(selected_nodes[selected_node_next_idx][1], mouse_pos_in_canvas),ObjectType::CtrlPoint, selected_path_idx, selected_node_next_idx, 1);
                     }
 
                 }
@@ -277,13 +277,35 @@ namespace CFSUI::Canvas {
                 for (size_t i = 0; i < paths.size(); i++) {
                     const auto& nodes = paths[i].nodes;
                     for (size_t j = 0; j < nodes.size(); j++) {
-                        updateMin(nodes[j][0], ObjectType::PathPoint, i, j, 0);
+                        updateMin(L2Distance(nodes[j][0], mouse_pos_in_canvas), ObjectType::PathPoint, i, j, 0);
                     }
                 }
 
-                if (min_dis < threshold) {
-                    return;
+                if (min_dis < threshold) return;
+
+                // resizing image point
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Image) {
+                    updateMin(L2Distance(selected_image_ptr->p_min, mouse_pos_in_canvas), ObjectType::BoundTopLeft, 0, 0, 0);
+                    updateMin(L2Distance(selected_image_ptr->p_max, mouse_pos_in_canvas), ObjectType::BoundBottomRight, 0, 0, 0);
+                    updateMin(L2Distance(ImVec2(selected_image_ptr->p_max.x, selected_image_ptr->p_min.y), mouse_pos_in_canvas), ObjectType::BoundTopRight, 0, 0, 0);
+                    updateMin(L2Distance(ImVec2(selected_image_ptr->p_min.x, selected_image_ptr->p_max.y), mouse_pos_in_canvas), ObjectType::BoundBottomLeft, 0, 0, 0);
                 }
+                if (min_dis < threshold) return;
+
+                // resizing image handle
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Image) {
+                    if (selected_image_ptr->p_min.x <= mouse_pos_in_canvas.x && mouse_pos_in_canvas.x <= selected_image_ptr->p_max.x) {
+                        updateMin(fabsf(mouse_pos_in_canvas.y-selected_image_ptr->p_min.y), ObjectType::BoundTop, 0, 0, 0);
+                        updateMin(fabsf(mouse_pos_in_canvas.y-selected_image_ptr->p_max.y), ObjectType::BoundBottom, 0, 0, 0);
+                    }
+                    if (selected_image_ptr->p_min.y <= mouse_pos_in_canvas.y && mouse_pos_in_canvas.y <= selected_image_ptr->p_max.y) {
+                        updateMin(fabsf(mouse_pos_in_canvas.x-selected_image_ptr->p_min.x), ObjectType::BoundLeft, 0, 0, 0);
+                        updateMin(fabsf(mouse_pos_in_canvas.x-selected_image_ptr->p_max.x), ObjectType::BoundRight, 0, 0, 0);
+                    }
+                }
+                if (min_dis < handle_threshold) return;
 
                 for (auto it = images.rbegin(); it != images.rend(); it++) {
                     if ((mouse_pos_in_canvas.x >= it->p_min.x && mouse_pos_in_canvas.x <= it->p_max.x)
@@ -369,7 +391,15 @@ namespace CFSUI::Canvas {
             }
 
             if (hovered_type == ObjectType::PathPoint || hovered_type == ObjectType::CtrlPoint) {
-                ImGui::SetMouseCursor(7);
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            } else if (hovered_type == ObjectType::BoundTop || hovered_type == ObjectType::BoundBottom) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+            } else if (hovered_type == ObjectType::BoundLeft || hovered_type == ObjectType::BoundRight) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+            } else if (hovered_type == ObjectType::BoundTopLeft || hovered_type == ObjectType::BoundBottomRight) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
+            } else if (hovered_type == ObjectType::BoundTopRight || hovered_type == ObjectType::BoundBottomLeft) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNESW);
             } else {
                 ImGui::SetMouseCursor(0);
             }
