@@ -128,7 +128,7 @@ namespace CFSUI::Canvas {
             static ObjectType selected_type = ObjectType::None;
             static size_t selected_path_idx = 0;
             static size_t selected_node_idx = 0;
-            static const Image* selected_image_ptr = nullptr;
+            static Image* selected_image_ptr = nullptr;
             static bool has_prev = false;
             static size_t selected_node_prev_idx = 0;
             static bool has_next = false;
@@ -342,10 +342,90 @@ namespace CFSUI::Canvas {
             };
 
             // points and moved distance
-            static auto update_moving_context = [&io] {
+            static auto update_moving_context = [&io, &mouse_pos_in_canvas] {
                 for (const auto point_ptr : moving_points_ptr) {
                     (*point_ptr).x += io.MouseDelta.x;
                     (*point_ptr).y += io.MouseDelta.y;
+                }
+                if (selected_type == ObjectType::Image) {
+                    if (hovered_type == ObjectType::BoundTop) {
+                        selected_image_ptr->p_min.y = mouse_pos_in_canvas.y;
+                    } else if (hovered_type == ObjectType::BoundBottom) {
+                        selected_image_ptr->p_max.y = mouse_pos_in_canvas.y;
+                    } else if (hovered_type == ObjectType::BoundLeft) {
+                        selected_image_ptr->p_min.x = mouse_pos_in_canvas.x;
+                    } else if (hovered_type == ObjectType::BoundRight) {
+                        selected_image_ptr->p_max.x = mouse_pos_in_canvas.x;
+                    } else if (hovered_type == ObjectType::BoundTopLeft) {
+                        float& p_min_x = selected_image_ptr->p_min.x;
+                        float& p_min_y = selected_image_ptr->p_min.y;
+                        const float p_max_x = selected_image_ptr->p_max.x;
+                        const float p_max_y = selected_image_ptr->p_max.y;
+                        const float width = p_max_x - mouse_pos_in_canvas.x;
+                        const float height = p_max_y - mouse_pos_in_canvas.y;
+                        const float width_height_ratio = width / height;
+                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
+
+                        if (width_height_ratio > prev_width_height_ratio) {
+                            p_min_x = mouse_pos_in_canvas.x;
+                            p_min_y = p_max_y - width / prev_width_height_ratio;
+                        } else {
+                            p_min_y = mouse_pos_in_canvas.y;
+                            p_min_x = p_max_x - height * prev_width_height_ratio;
+                        }
+                    } else if (hovered_type == ObjectType::BoundTopRight) {
+                        float& p_max_x = selected_image_ptr->p_max.x;
+                        float& p_min_y = selected_image_ptr->p_min.y;
+                        const float p_min_x = selected_image_ptr->p_min.x;
+                        const float p_max_y = selected_image_ptr->p_max.y;
+                        const float width = mouse_pos_in_canvas.x - p_min_x;
+                        const float height = p_max_y - mouse_pos_in_canvas.y;
+                        const float width_height_ratio = width / height;
+                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
+
+                        if (width_height_ratio > prev_width_height_ratio) {
+                            p_max_x = mouse_pos_in_canvas.x;
+                            p_min_y = p_max_y - width / prev_width_height_ratio;
+                        } else {
+                            p_min_y = mouse_pos_in_canvas.y;
+                            p_max_x = p_min_x + height * prev_width_height_ratio;
+                        }
+                    } else if (hovered_type == ObjectType::BoundBottomLeft) {
+                        float& p_min_x = selected_image_ptr->p_min.x;
+                        float& p_max_y = selected_image_ptr->p_max.y;
+                        const float p_max_x = selected_image_ptr->p_max.x;
+                        const float p_min_y = selected_image_ptr->p_min.y;
+                        const float width = p_max_x - mouse_pos_in_canvas.x;
+                        const float height = mouse_pos_in_canvas.y - p_min_y;
+                        const float width_height_ratio = width / height;
+                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
+
+                        if (width_height_ratio > prev_width_height_ratio) {
+                            p_min_x = mouse_pos_in_canvas.x;
+                            p_max_y = p_min_y + width / prev_width_height_ratio;
+                        } else {
+                            p_max_y = mouse_pos_in_canvas.y;
+                            p_min_x = p_max_x - height * prev_width_height_ratio;
+                        }
+                    } else if (hovered_type == ObjectType::BoundBottomRight) {
+                        float& p_max_x = selected_image_ptr->p_max.x;
+                        float& p_max_y = selected_image_ptr->p_max.y;
+                        const float p_min_x = selected_image_ptr->p_min.x;
+                        const float p_min_y = selected_image_ptr->p_min.y;
+                        const float width = mouse_pos_in_canvas.x - p_min_x;
+                        const float height = mouse_pos_in_canvas.y - p_min_y;
+                        const float width_height_ratio = width / height;
+                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
+
+                        if (width_height_ratio > prev_width_height_ratio) {
+                            p_max_x = mouse_pos_in_canvas.x;
+                            p_max_y = p_min_y + width / prev_width_height_ratio;
+                        } else {
+                            p_max_y = mouse_pos_in_canvas.y;
+                            p_max_x = p_min_x + height * prev_width_height_ratio;
+                        }
+
+                    }
                 }
                 mouse_moved_distance.x += std::fabsf(io.MouseDelta.x);
                 mouse_moved_distance.y += std::fabsf(io.MouseDelta.y);

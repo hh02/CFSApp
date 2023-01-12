@@ -51,14 +51,11 @@ namespace CFSUI::Canvas {
     };
     struct Image {
         GLuint texture;
-        int width;
-        int height;
         ImVec2 p_min;
         ImVec2 p_max;
-        Image(GLuint image_texture, int image_width, int image_height) :
-                texture(image_texture),
-                width(image_width), height(image_height),
-                p_min(10.0f, 10.0f), p_max(10.0f+image_width, 10.0f+image_height) {}
+        Image(GLuint image_texture, float image_width, float image_height) :texture(image_texture),
+                                                                            p_min(10.0f, 10.0f),
+                                                                            p_max(10.0f+image_width, 10.0f+image_height) {}
     };
 
 
