@@ -53,9 +53,11 @@ namespace CFSUI::Canvas {
         GLuint texture;
         ImVec2 p_min;
         ImVec2 p_max;
+        bool locked;
         Image(GLuint image_texture, float image_width, float image_height) :texture(image_texture),
                                                                             p_min(10.0f, 10.0f),
-                                                                            p_max(10.0f+image_width, 10.0f+image_height) {}
+                                                                            p_max(10.0f+image_width, 10.0f+image_height),
+                                                                            locked(false) {}
     };
 
 

@@ -289,7 +289,7 @@ namespace CFSUI::Canvas {
 
                 // resizing image point
                 min_dis = std::numeric_limits<float>::max();
-                if (selected_type == ObjectType::Image) {
+                if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
                     updateMin(L2Distance(image.p_min, mouse_pos_in_canvas), ObjectType::BoundTopLeft, 0, 0, 0);
                     updateMin(L2Distance(image.p_max, mouse_pos_in_canvas), ObjectType::BoundBottomRight, 0, 0, 0);
@@ -300,7 +300,7 @@ namespace CFSUI::Canvas {
 
                 // resizing image handle
                 min_dis = std::numeric_limits<float>::max();
-                if (selected_type == ObjectType::Image) {
+                if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
                     if (image.p_min.x <= mouse_pos_in_canvas.x && mouse_pos_in_canvas.x <= image.p_max.x) {
                         updateMin(fabsf(mouse_pos_in_canvas.y-image.p_min.y), ObjectType::BoundTop, 0, 0, 0);
@@ -340,8 +340,10 @@ namespace CFSUI::Canvas {
                 } else if (hovered_type == ObjectType::CtrlPoint) {
                     moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]);
                 } else if (hovered_type == ObjectType::Image) {
-                    moving_points_ptr.emplace_back(&images[hovered_image_idx].p_min);
-                    moving_points_ptr.emplace_back(&images[hovered_image_idx].p_max);
+                    if (!images[hovered_image_idx].locked) {
+                        moving_points_ptr.emplace_back(&images[hovered_image_idx].p_min);
+                        moving_points_ptr.emplace_back(&images[hovered_image_idx].p_max);
+                    }
                 }
                 // moving path
             };
@@ -500,8 +502,14 @@ namespace CFSUI::Canvas {
 
             // TODO: better name
             if (ImGui::BeginPopup("image_popup")) {
+                if (ImGui::Selectable("lock")) {
+                    images[selected_image_idx].locked = true;
+                }
+                if (ImGui::Selectable("unlock")) {
+                    images[selected_image_idx].locked = false;
+                }
                 if (ImGui::Selectable("up")) {
-                    if (selected_image_idx + 1 < images.size()) {
+                    if (hovered_image_idx + 1 < images.size()) {
                         std::swap(images[selected_image_idx], images[selected_image_idx+1]);
                         selected_image_idx++;
                     }
@@ -578,7 +586,7 @@ namespace CFSUI::Canvas {
                 }
             }
             // 3.2 selected image
-            else if (selected_type == ObjectType::Image) {
+            else if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                 draw_list->AddRect(ImVec2Add(origin, images[selected_image_idx].p_min),
                                    ImVec2Add(origin,images[selected_image_idx].p_max),
                                    selected_color, 0.0f, 0, 2.0f);
@@ -609,7 +617,7 @@ namespace CFSUI::Canvas {
                 }
             }
             // 5.2 draw selected image's point
-            else if (selected_type == ObjectType::Image) {
+            else if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                 const auto& image = images[selected_image_idx];
                 draw_list->AddCircleFilled(ImVec2Add(origin, image.p_min), point_radius, selected_color);
                 draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(image.p_min.x, image.p_max.y)), point_radius, selected_color);
