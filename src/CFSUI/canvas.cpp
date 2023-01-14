@@ -136,6 +136,8 @@ namespace CFSUI::Canvas {
 
             static std::vector<ImVec2*> moving_points_ptr;
 
+            static bool draw_big_start_point = false;
+
             // state machine
 
             // state
@@ -186,6 +188,9 @@ namespace CFSUI::Canvas {
             static auto update_inserting_node_pos = [&mouse_pos_in_canvas] {
                 auto& selected_node = paths[selected_path_idx].nodes[selected_node_idx];
                 selected_node[0] = mouse_pos_in_canvas;
+                draw_big_start_point = paths[selected_path_idx].nodes.size() > 1
+                        && (L2Distance(selected_node[0], paths[selected_path_idx].nodes[0][0]) < threshold);
+
                 if (selected_node_idx == 0) {
                     selected_node[1] = mouse_pos_in_canvas;
                     selected_node[2] = mouse_pos_in_canvas;
@@ -246,6 +251,7 @@ namespace CFSUI::Canvas {
                 selected_nodes.front()[1] = selected_nodes.back()[1];
                 paths[selected_path_idx].nodes.pop_back();
                 paths[selected_path_idx].is_closed = true;
+                draw_big_start_point = false;
                 selected_node_idx = 0;
             };
             static auto unselect = [] {
@@ -438,10 +444,6 @@ namespace CFSUI::Canvas {
                 mouse_moved_distance.x += std::fabsf(io.MouseDelta.x);
                 mouse_moved_distance.y += std::fabsf(io.MouseDelta.y);
             };
-            static auto draw_big_start_point = [draw_list, &origin] {
-                draw_list->AddCircleFilled(ImVec2Add(origin, paths[selected_path_idx].nodes.front()[0]), point_radius+ radius_bigger_than, normal_color);
-
-            };
             static auto show_image_popup = [] {
                 ImGui::OpenPopup("image_popup");
             };
@@ -461,7 +463,6 @@ namespace CFSUI::Canvas {
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && !is_start_point] = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
                             Inserting_s + event<mouse_moved> / update_inserting_node_pos,
-                            Inserting_s + event<mouse_moved> [is_start_point] / draw_big_start_point,
                             Moving_s + event<mouse_left_released> [!is_dragged && is_open_point] / new_node = Inserting_s,
                             Moving_s + event<mouse_left_released> [is_dragged  || !is_open_point] = Normal_s,
                             Moving_s + event<mouse_moved> / update_moving_context
@@ -602,6 +603,12 @@ namespace CFSUI::Canvas {
                 for (const auto node : path.nodes) {
                     draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, normal_color);
                 }
+            }
+            if (draw_big_start_point) {
+                draw_list->AddCircleFilled(ImVec2Add(origin, paths[selected_path_idx].nodes.front()[0]), point_radius+radius_bigger_than, normal_color);
+            }
+            if (selected_type == ObjectType::PathPoint && !paths[selected_path_idx].is_closed) {
+                draw_list->AddCircle(ImVec2Add(origin, paths[selected_path_idx].nodes.back()[0]), point_radius+radius_bigger_than, normal_color);
             }
             // 5. draw selected
             // 5.1 draw selected point and control point
