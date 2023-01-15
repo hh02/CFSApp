@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <cmath>
 #include <vector>
-#include "main.h"
 #include "canvas.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_WINDOWS_UTF8
@@ -81,11 +80,10 @@ namespace CFSUI::Canvas {
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
             static ImVec4 ctrl_color_vec {0.5f, 0.5f, 0.5f, 1.0f};
-            static ImVec4 selected_color_vec {0.051f, 0.6f, 1.0f, 1.0f};
+            static ImVec4 selected_color_vec {0.0f, 0.6f, 1.0f, 1.0f};
             static ImVec4 hovered_color_vec {0.2f, 0.8f, 1.0f, 1.0f};
 
-            ImGuiColorEditFlags flags = 0;
-            flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
+            static const ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
             ImGui::Text("Normal color: ");
             ImGui::SameLine();
             ImGui::ColorEdit4("EditNormalColor", (float*)&normal_color_vec, flags);
@@ -150,12 +148,8 @@ namespace CFSUI::Canvas {
             ImU32 normal_color = ImGui::GetColorU32(normal_color_vec);
             ImU32 selected_color = ImGui::GetColorU32(selected_color_vec);
             ImU32 hovered_color = ImGui::GetColorU32(hovered_color_vec);
-//            static ImU32 ctrl_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
-//            static ImU32 normal_color = ImGui::GetColorU32(IM_COL32(0, 0, 0, 255));
-//            static ImU32 selected_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
-//            static ImU32 hovered_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
             static float curve_thickness = 2.0f;
-            static float handle_thickness = 1.5f;
+            static float handle_thickness = 2.0f;
             // TODO: use better name
             static float threshold = 6.0f; // distance threshold for selecting a point
             static float handle_threshold = 4.0f;
@@ -711,8 +705,10 @@ namespace CFSUI::Canvas {
             if (draw_big_start_point) {
                 draw_list->AddCircleFilled(transform(paths[selected_path_idx].nodes.front()[0]), point_radius+radius_bigger_than, normal_color);
             }
-            if (selected_type == ObjectType::PathPoint && !paths[selected_path_idx].is_closed) {
-                draw_list->AddCircle(transform(paths[selected_path_idx].nodes.back()[0]), point_radius+radius_bigger_than, hovered_color);
+            for (const auto& path : paths) {
+                if (!path.is_closed) {
+                    draw_list->AddCircle(transform(path.nodes.back()[0]), point_radius+radius_bigger_than, hovered_color);
+                }
             }
             // 5. draw selected
             // 5.1 draw selected point and control point
