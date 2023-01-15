@@ -29,9 +29,11 @@ namespace CFSUI::Canvas {
     struct Path {
         std::vector<Node> nodes;
         bool is_closed;
+        ImVec2 p_min;
+        ImVec2 p_max;
 
         // A path at least has one node
-        Path() : nodes(), is_closed(false) {}
+        Path() : nodes(), is_closed(false), p_min(), p_max() {}
     };
 
     enum class ObjectType {
