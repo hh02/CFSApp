@@ -48,9 +48,16 @@ namespace CFSUI::Canvas {
 
         return true;
     }
+    ImVec2 translate(0.0f, 0.0f);
+    float scaling = 1.0f;
+
+
+    inline ImVec2 transform(const ImVec2& point) {
+        return {point.x*scaling+translate.x, point.y*scaling+translate.y};
+    }
+
     void showCanvas(bool *open) {
         if (ImGui::Begin("Canvas", open)) {
-            static ImVec2 scrolling(0.0f, 0.0f);
             static std::vector<Path> paths;
             static std::vector<Image> images;
             bool is_clicked_button = ImGui::Button("New path");
@@ -72,9 +79,15 @@ namespace CFSUI::Canvas {
                 images.emplace_back(image_texture, image_width, image_height);
             }
 
-            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
-            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
-            ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+            static ImVec2 canvas_p0_prev(0.0f, 0.0f);
+            const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            const ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+
+            translate.x += (canvas_p0.x - canvas_p0_prev.x);
+            translate.y += (canvas_p0.y - canvas_p0_prev.y);
+            canvas_p0_prev = canvas_p0;
+
 
             // Draw border and background color
             ImGuiIO &io = ImGui::GetIO();
@@ -87,8 +100,7 @@ namespace CFSUI::Canvas {
                                    ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             const bool is_hovered = ImGui::IsItemHovered(); // Hovered
             const bool is_active = ImGui::IsItemActive();   // Held
-            const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
-            const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+
 
             // mouse status
             const bool is_mouse_left_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left) && is_hovered;
@@ -96,15 +108,17 @@ namespace CFSUI::Canvas {
             const bool is_mouse_left_double_clicked = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && is_hovered;
             const bool is_mouse_right_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Right) && is_hovered;
             const bool is_mouse_moved = (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
+            const bool is_mouse_scrolled = (io.MouseWheel != 0);
 
             static ImVec2 mouse_moved_distance;
 
 
             if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-                scrolling.x += io.MouseDelta.x;
-                scrolling.y += io.MouseDelta.y;
+                translate.x += io.MouseDelta.x;
+                translate.y += io.MouseDelta.y;
             }
 
+            const ImVec2 mouse_pos_in_canvas((io.MousePos.x-translate.x)/scaling, (io.MousePos.y-translate.y) / scaling);
 
             // set properties
             static float point_radius = 4.0f;
@@ -149,6 +163,7 @@ namespace CFSUI::Canvas {
             // event
             struct clicked_button {};
             struct mouse_moved {};
+            struct mouse_scrolled {};
             struct mouse_left_clicked {};
             struct mouse_left_double_clicked {};
             struct mouse_left_released {};
@@ -209,11 +224,13 @@ namespace CFSUI::Canvas {
                 auto& p2 = selected_node[1];
                 const auto& p3 = selected_node[0];
 
-                auto d = ImVec2Sub(p3, p0);
-                d.x /= 3.0f;
-                d.y /= 3.0f;
-                p1 = ImVec2Add(p0, d);
-                p2 = ImVec2Sub(p3, d);
+                float dx = (p3.x - p0.x) / 3.0f;
+                float dy = (p3.y - p0.y) / 3.0f;
+
+                p1.x = p0.x + dx;
+                p1.y = p0.y + dy;
+                p2.x = p3.x - dx;
+                p2.y = p3.y - dy;
             };
 
             // select path and update path's p_min and p_max
@@ -364,30 +381,31 @@ namespace CFSUI::Canvas {
                 // moving points
                 // clear vector
                 std::vector<ImVec2*>().swap(moving_points_ptr);
+
                 // move
                 if (hovered_type == ObjectType::CtrlPoint) {
                     moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]);
                 }
                 // select and move
-                else if (selected_type == ObjectType::PathPoint) {
-                    moving_points_ptr.emplace_back(&paths[selected_path_idx].nodes[selected_node_idx][0]);
-                    moving_points_ptr.emplace_back(&paths[selected_path_idx].nodes[selected_node_idx][1]);
-                    moving_points_ptr.emplace_back(&paths[selected_path_idx].nodes[selected_node_idx][2]);
+                else if (hovered_type == ObjectType::PathPoint) {
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][0]);
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][1]);
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].nodes[hovered_node_idx][2]);
                 }
-                else if (selected_type == ObjectType::Image) {
-                    if (!images[selected_image_idx].locked) {
-                        moving_points_ptr.emplace_back(&images[selected_image_idx].p_min);
-                        moving_points_ptr.emplace_back(&images[selected_image_idx].p_max);
+                else if (hovered_type == ObjectType::Image) {
+                    if (!images[hovered_image_idx].locked) {
+                        moving_points_ptr.emplace_back(&images[hovered_image_idx].p_min);
+                        moving_points_ptr.emplace_back(&images[hovered_image_idx].p_max);
                     }
                 }
-                else if (selected_type == ObjectType::Path) {
-                    for (auto& node : paths[selected_path_idx].nodes) {
+                else if (hovered_type == ObjectType::Path) {
+                    for (auto& node : paths[hovered_path_idx].nodes) {
                         for (auto& point : node) {
                             moving_points_ptr.emplace_back(&point);
                         }
                     }
-                    moving_points_ptr.emplace_back(&paths[selected_path_idx].p_min);
-                    moving_points_ptr.emplace_back(&paths[selected_path_idx].p_max);
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].p_min);
+                    moving_points_ptr.emplace_back(&paths[hovered_path_idx].p_max);
                 }
             };
 
@@ -401,13 +419,17 @@ namespace CFSUI::Canvas {
                     auto& image = images[selected_image_idx];
                     if (hovered_type == ObjectType::BoundTop) {
                         image.p_min.y = mouse_pos_in_canvas.y;
-                    } else if (hovered_type == ObjectType::BoundBottom) {
+                    }
+                    else if (hovered_type == ObjectType::BoundBottom) {
                         image.p_max.y = mouse_pos_in_canvas.y;
-                    } else if (hovered_type == ObjectType::BoundLeft) {
+                    }
+                    else if (hovered_type == ObjectType::BoundLeft) {
                         image.p_min.x = mouse_pos_in_canvas.x;
-                    } else if (hovered_type == ObjectType::BoundRight) {
+                    }
+                    else if (hovered_type == ObjectType::BoundRight) {
                         image.p_max.x = mouse_pos_in_canvas.x;
-                    } else if (hovered_type == ObjectType::BoundTopLeft) {
+                    }
+                    else if (hovered_type == ObjectType::BoundTopLeft) {
                         float& p_min_x = image.p_min.x;
                         float& p_min_y = image.p_min.y;
                         const float p_max_x = image.p_max.x;
@@ -424,7 +446,8 @@ namespace CFSUI::Canvas {
                             p_min_y = mouse_pos_in_canvas.y;
                             p_min_x = p_max_x - height * prev_width_height_ratio;
                         }
-                    } else if (hovered_type == ObjectType::BoundTopRight) {
+                    }
+                    else if (hovered_type == ObjectType::BoundTopRight) {
                         float& p_max_x = image.p_max.x;
                         float& p_min_y = image.p_min.y;
                         const float p_min_x = image.p_min.x;
@@ -441,7 +464,8 @@ namespace CFSUI::Canvas {
                             p_min_y = mouse_pos_in_canvas.y;
                             p_max_x = p_min_x + height * prev_width_height_ratio;
                         }
-                    } else if (hovered_type == ObjectType::BoundBottomLeft) {
+                    }
+                    else if (hovered_type == ObjectType::BoundBottomLeft) {
                         float& p_min_x = image.p_min.x;
                         float& p_max_y = image.p_max.y;
                         const float p_max_x = image.p_max.x;
@@ -458,7 +482,8 @@ namespace CFSUI::Canvas {
                             p_max_y = mouse_pos_in_canvas.y;
                             p_min_x = p_max_x - height * prev_width_height_ratio;
                         }
-                    } else if (hovered_type == ObjectType::BoundBottomRight) {
+                    }
+                    else if (hovered_type == ObjectType::BoundBottomRight) {
                         float& p_max_x = image.p_max.x;
                         float& p_max_y = image.p_max.y;
                         const float p_min_x = image.p_min.x;
@@ -484,14 +509,21 @@ namespace CFSUI::Canvas {
             static auto show_image_popup = [] {
                 ImGui::OpenPopup("image_popup");
             };
+            static auto zoom = [&io] {
+                const float c = io.MouseWheel > 0 ? 1.05f : 0.95f;
+                scaling *= c;
+                translate.x = translate.x * c + (1.0f - c) * io.MousePos.x;
+                translate.y = translate.y * c + (1.0f - c) * io.MousePos.y;
+            };
 
 
-            class transition_table {
+            class TransitionTable {
             public:
                 auto operator()() {
                     using namespace sml;
                     return make_transition_table(
                             * Normal_s + event<mouse_moved> / update_hovered,
+                            Normal_s + event<mouse_scrolled> / zoom,
                             Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
                             Normal_s + event<mouse_left_clicked> [is_blank] / unselect,
                             Normal_s + event<mouse_left_clicked> [!is_blank] / (update_selected, set_moving_context) = Moving_s,
@@ -507,7 +539,7 @@ namespace CFSUI::Canvas {
                     );
                 }
             };
-            static sml::sm<transition_table> state_machine;
+            static sml::sm<TransitionTable> state_machine;
 
             if (is_clicked_button) {
                 state_machine.process_event(clicked_button{});
@@ -515,19 +547,22 @@ namespace CFSUI::Canvas {
             if (is_mouse_moved) {
                 state_machine.process_event(mouse_moved{});
             }
+            if (is_mouse_scrolled) {
+                state_machine.process_event(mouse_scrolled{});
+            }
 
             if (is_mouse_left_double_clicked) {
                 state_machine.process_event(mouse_left_double_clicked{});
             } else if (is_mouse_left_clicked) {
                 state_machine.process_event(mouse_left_clicked{});
             }
-
             if (is_mouse_left_released) {
                 state_machine.process_event(mouse_left_released{});
             }
             if (is_mouse_right_clicked) {
                 state_machine.process_event(mouse_right_clicked{});
             }
+
 
             if (hovered_type == ObjectType::PathPoint || hovered_type == ObjectType::CtrlPoint) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
@@ -578,10 +613,7 @@ namespace CFSUI::Canvas {
             // layer 1 images ----------
             // 1. draw images
             for (const auto& image : images) {
-                draw_list->AddImage((void*)(intptr_t)image.texture,
-                                    ImVec2Add(origin, image.p_min), ImVec2Add(origin, image.p_max),
-//                                    image.p_min, image.p_max,
-                                    ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+                draw_list->AddImage((void*)(intptr_t)image.texture,transform(image.p_min), transform(image.p_max));
             }
 
 
@@ -594,13 +626,13 @@ namespace CFSUI::Canvas {
             for (const auto& path : paths) {
                 const auto& nodes = path.nodes;
                 for (size_t i = 1; i < nodes.size(); i++) {
-                    draw_list->AddBezierCubic(ImVec2Add(origin, nodes[i-1][0]), ImVec2Add(origin, nodes[i-1][2]),
-                                              ImVec2Add(origin, nodes[i][1]), ImVec2Add(origin, nodes[i][0]),
+                    draw_list->AddBezierCubic(transform(nodes[i-1][0]), transform(nodes[i-1][2]),
+                                              transform(nodes[i][1]), transform(nodes[i][0]),
                                               normal_color, curve_thickness);
                 }
                 if (path.is_closed) {
-                    draw_list->AddBezierCubic(ImVec2Add(origin, nodes.back()[0]), ImVec2Add(origin, nodes.back()[2]),
-                                              ImVec2Add(origin, nodes.front()[1]), ImVec2Add(origin, nodes.front()[0]),
+                    draw_list->AddBezierCubic(transform(nodes.back()[0]), transform(nodes.back()[2]),
+                                              transform(nodes.front()[1]), transform(nodes.front()[0]),
                                               normal_color, curve_thickness);
                 }
             }
@@ -609,36 +641,36 @@ namespace CFSUI::Canvas {
             if (selected_type == ObjectType::PathPoint) {
                 // draw curves
                 if (has_prev) {
-                    draw_list->AddBezierCubic(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]),
-                                              ImVec2Add(origin, selected_node[1]), ImVec2Add(origin, selected_node[0]),
+                    draw_list->AddBezierCubic(transform(selected_node_prev[0]), transform(selected_node_prev[2]),
+                                              transform(selected_node[1]), transform(selected_node[0]),
                                               selected_color, curve_thickness);
                 }
                 if (has_next) {
-                    draw_list->AddBezierCubic(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[2]),
-                                              ImVec2Add(origin, selected_node_next[1]), ImVec2Add(origin, selected_node_next[0]),
+                    draw_list->AddBezierCubic(transform(selected_node[0]), transform(selected_node[2]),
+                                              transform(selected_node_next[1]), transform(selected_node_next[0]),
                                               selected_color, curve_thickness);
                 }
                 // draw control handle
                 if (has_prev) {
-                    draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[1]), ctrl_color, handle_thickness);
-                    draw_list->AddLine(ImVec2Add(origin, selected_node_prev[0]), ImVec2Add(origin, selected_node_prev[2]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(transform(selected_node[0]), transform(selected_node[1]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(transform(selected_node_prev[0]), transform(selected_node_prev[2]), ctrl_color, handle_thickness);
                 }
                 if (has_next) {
-                    draw_list->AddLine(ImVec2Add(origin, selected_node[0]), ImVec2Add(origin, selected_node[2]), ctrl_color, handle_thickness);
-                    draw_list->AddLine(ImVec2Add(origin, selected_node_next[0]), ImVec2Add(origin, selected_node_next[1]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(transform(selected_node[0]), transform(selected_node[2]), ctrl_color, handle_thickness);
+                    draw_list->AddLine(transform(selected_node_next[0]), transform(selected_node_next[1]), ctrl_color, handle_thickness);
                 }
             }
             // 3.2 selected image
             else if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
-                draw_list->AddRect(ImVec2Add(origin, images[selected_image_idx].p_min),
-                                   ImVec2Add(origin,images[selected_image_idx].p_max),
+                draw_list->AddRect(transform(images[selected_image_idx].p_min),
+                                   transform(images[selected_image_idx].p_max),
                                    selected_color, 0.0f, 0, 2.0f);
 
             }
             // 3.3 selected path
             else if (selected_type == ObjectType::Path) {
-                draw_list->AddRect(ImVec2Add(origin, paths[selected_path_idx].p_min),
-                                   ImVec2Add(origin,paths[selected_path_idx].p_max),
+                draw_list->AddRect(transform(paths[selected_path_idx].p_min),
+                                   transform(paths[selected_path_idx].p_max),
                                    selected_color, 0.0f, 0, 2.0f);
 
             }
@@ -646,55 +678,55 @@ namespace CFSUI::Canvas {
             // 4. draw normal path point
             for (const auto& path : paths) {
                 for (const auto node : path.nodes) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin, node[0]), point_radius, normal_color);
+                    draw_list->AddCircleFilled(transform(node[0]), point_radius, normal_color);
                 }
             }
             if (draw_big_start_point) {
-                draw_list->AddCircleFilled(ImVec2Add(origin, paths[selected_path_idx].nodes.front()[0]), point_radius+radius_bigger_than, normal_color);
+                draw_list->AddCircleFilled(transform(paths[selected_path_idx].nodes.front()[0]), point_radius+radius_bigger_than, normal_color);
             }
             if (selected_type == ObjectType::PathPoint && !paths[selected_path_idx].is_closed) {
-                draw_list->AddCircle(ImVec2Add(origin, paths[selected_path_idx].nodes.back()[0]), point_radius+radius_bigger_than, hovered_color, 0, radius_bigger_than);
+                draw_list->AddCircle(transform(paths[selected_path_idx].nodes.back()[0]), point_radius+radius_bigger_than, hovered_color);
             }
             // 5. draw selected
             // 5.1 draw selected point and control point
             if (selected_type == ObjectType::PathPoint) {
-                draw_list->AddCircleFilled(ImVec2Add(origin,selected_node[0]), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(selected_node[0]), point_radius, selected_color);
                 if (has_prev) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[1]), point_radius, ctrl_color);
-                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_prev[2]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(transform(selected_node[1]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(transform(selected_node_prev[2]), point_radius, ctrl_color);
                 }
                 if (has_next) {
-                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node[2]), point_radius, ctrl_color);
-                    draw_list->AddCircleFilled(ImVec2Add(origin, selected_node_next[1]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(transform(selected_node[2]), point_radius, ctrl_color);
+                    draw_list->AddCircleFilled(transform(selected_node_next[1]), point_radius, ctrl_color);
                 }
             }
             // 5.2 draw selected image's resizing point
             else if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                 const auto& image = images[selected_image_idx];
-                draw_list->AddCircleFilled(ImVec2Add(origin, image.p_min), point_radius, selected_color);
-                draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(image.p_min.x, image.p_max.y)), point_radius, selected_color);
-                draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(image.p_max.x, image.p_min.y)), point_radius, selected_color);
-                draw_list->AddCircleFilled(ImVec2Add(origin, image.p_max), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(image.p_min), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(ImVec2(image.p_min.x, image.p_max.y)), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(ImVec2(image.p_max.x, image.p_min.y)), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(image.p_max), point_radius, selected_color);
             }
             // 5.3 draw selected path's resizing point
             else if (selected_type == ObjectType::Path) {
                 const auto& path = paths[selected_path_idx];
-                draw_list->AddCircleFilled(ImVec2Add(origin, path.p_min), point_radius, selected_color);
-                draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(path.p_min.x, path.p_max.y)), point_radius, selected_color);
-                draw_list->AddCircleFilled(ImVec2Add(origin, ImVec2(path.p_max.x, path.p_min.y)), point_radius, selected_color);
-                draw_list->AddCircleFilled(ImVec2Add(origin, path.p_max), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(path.p_min), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(ImVec2(path.p_min.x, path.p_max.y)), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(ImVec2(path.p_max.x, path.p_min.y)), point_radius, selected_color);
+                draw_list->AddCircleFilled(transform(path.p_max), point_radius, selected_color);
             }
             // layer 4 hovered----------
             // 6. draw hovered
             // 6.1 draw hovered image
             if (hovered_type == ObjectType::Image && selected_type != ObjectType::Image) {
-                draw_list->AddRect(ImVec2Add(origin, images[hovered_image_idx].p_min),
-                                   ImVec2Add(origin, images[hovered_image_idx].p_max),
+                draw_list->AddRect(transform(images[hovered_image_idx].p_min),
+                                   transform(images[hovered_image_idx].p_max),
                                    hovered_color, 0.0f, 0, 2.0f);
             }
             // 6.2 draw hovered point
             else if (hovered_type == ObjectType::PathPoint || hovered_type == ObjectType::CtrlPoint) {
-                draw_list->AddCircleFilled(ImVec2Add(origin, paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]), point_radius, hovered_color);
+                draw_list->AddCircleFilled(transform(paths[hovered_path_idx].nodes[hovered_node_idx][hovered_point_idx]), point_radius, hovered_color);
             }
             draw_list->PopClipRect();
 
