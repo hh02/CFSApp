@@ -79,6 +79,29 @@ namespace CFSUI::Canvas {
                 images.emplace_back(image_texture, image_width, image_height);
             }
 
+            static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
+            static ImVec4 ctrl_color_vec {0.5f, 0.5f, 0.5f, 1.0f};
+            static ImVec4 selected_color_vec {0.051f, 0.6f, 1.0f, 1.0f};
+            static ImVec4 hovered_color_vec {0.2f, 0.8f, 1.0f, 1.0f};
+
+            ImGuiColorEditFlags flags = 0;
+            flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
+            ImGui::Text("Normal color: ");
+            ImGui::SameLine();
+            ImGui::ColorEdit4("EditNormalColor", (float*)&normal_color_vec, flags);
+
+            ImGui::Text("Control color: ");
+            ImGui::SameLine();
+            ImGui::ColorEdit4("EditCtrlColor", (float*)&ctrl_color_vec, flags);
+
+            ImGui::Text("Selected color: ");
+            ImGui::SameLine();
+            ImGui::ColorEdit4("EditSelectedColor", (float*)&selected_color_vec, flags);
+
+            ImGui::Text("Hovered color: ");
+            ImGui::SameLine();
+            ImGui::ColorEdit4("EditHoveredColor", (float*)&hovered_color_vec, flags);
+
             static ImVec2 canvas_p0_prev(0.0f, 0.0f);
             const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
             const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
@@ -123,10 +146,14 @@ namespace CFSUI::Canvas {
             // set properties
             static float point_radius = 4.0f;
             static const float radius_bigger_than = 2.0f;
-            static ImU32 ctrl_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
-            static ImU32 normal_color = ImGui::GetColorU32(IM_COL32(0, 0, 0, 255));
-            static ImU32 selected_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
-            static ImU32 hovered_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
+            ImU32 ctrl_color = ImGui::GetColorU32(ctrl_color_vec);
+            ImU32 normal_color = ImGui::GetColorU32(normal_color_vec);
+            ImU32 selected_color = ImGui::GetColorU32(selected_color_vec);
+            ImU32 hovered_color = ImGui::GetColorU32(hovered_color_vec);
+//            static ImU32 ctrl_color = ImGui::GetColorU32(IM_COL32(128, 128, 128, 255));
+//            static ImU32 normal_color = ImGui::GetColorU32(IM_COL32(0, 0, 0, 255));
+//            static ImU32 selected_color = ImGui::GetColorU32(IM_COL32(13, 153, 255, 255));
+//            static ImU32 hovered_color = ImGui::GetColorU32(IM_COL32(50, 200, 255, 255));
             static float curve_thickness = 2.0f;
             static float handle_thickness = 1.5f;
             // TODO: use better name
