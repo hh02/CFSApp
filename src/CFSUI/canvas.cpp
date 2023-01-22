@@ -156,8 +156,8 @@ namespace CFSUI::Canvas {
             static float handle_thickness = 2.0f;
             static float bounding_thickness = 2.0f;
             // TODO: use better name
-            static float threshold = 6.0f; // distance threshold for hovering
-            static float handle_threshold = 4.0f;
+            static float point_threshold = 6.0f; // distance point_threshold for hovering
+            static float line_threshold = 4.0f;
 
             // hover and select----------------------
             static ObjectType hovered_type = ObjectType::None;
@@ -211,7 +211,7 @@ namespace CFSUI::Canvas {
             };
             static auto is_start_point = []() {
                 size_t siz = paths[selected_path_idx].points.size();
-                return L2Distance(paths[selected_path_idx].points[siz-3], paths[selected_path_idx].points[0]) < threshold;
+                return L2Distance(paths[selected_path_idx].points[siz-3], paths[selected_path_idx].points[0]) < point_threshold;
             };
             static auto is_inserting_first = [] {
                 return paths[selected_path_idx].points.size() == 3;
@@ -237,7 +237,7 @@ namespace CFSUI::Canvas {
                 points[selected_point_idx] = mouse_pos_in_canvas;
 
                 draw_big_start_point = (points.size() > 3)
-                        && (L2Distance(points[selected_point_idx], points[0]) < threshold);
+                        && (L2Distance(points[selected_point_idx], points[0]) < point_threshold);
 
                 if (selected_point_idx == 0) {
                     points[1] = mouse_pos_in_canvas;
@@ -359,33 +359,60 @@ namespace CFSUI::Canvas {
                     }
                 }
 
-                if (min_dis < threshold && draw_points) return;
+                if (min_dis < point_threshold && draw_points) return;
+
+                // resizing path point
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Path) {
+                    const auto& path = paths[selected_path_idx];
+                    updateMin(L2Distance(path.p_min, mouse_pos_in_canvas), ObjectType::PathTopLeft, 0, 0);
+                    updateMin(L2Distance(path.p_max, mouse_pos_in_canvas), ObjectType::PathBottomRight, 0, 0);
+                    updateMin(L2Distance({path.p_max.x, path.p_min.y}, mouse_pos_in_canvas), ObjectType::PathTopRight, 0, 0);
+                    updateMin(L2Distance({path.p_min.x, path.p_max.y}, mouse_pos_in_canvas), ObjectType::PathBottomLeft, 0, 0);
+                }
+                if (min_dis < point_threshold) return;
+
+                // resizing path handle
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Path) {
+                    const auto& path = paths[selected_path_idx];
+                    if (path.p_min.x < mouse_pos_in_canvas.x && mouse_pos_in_canvas.x < path.p_max.x) {
+                        updateMin(std::fabsf(mouse_pos_in_canvas.y-path.p_min.y), ObjectType::PathTop, 0, 0);
+                        updateMin(std::fabsf(mouse_pos_in_canvas.y-path.p_max.y), ObjectType::PathBottom, 0, 0);
+                    }
+                    if (path.p_min.y < mouse_pos_in_canvas.y && mouse_pos_in_canvas.y < path.p_max.y) {
+                        updateMin(std::fabsf(mouse_pos_in_canvas.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
+                        updateMin(std::fabsf(mouse_pos_in_canvas.x - path.p_max.x), ObjectType::PathRight, 0, 0);
+                    }
+                }
+                if (min_dis < line_threshold) return;
+
 
                 // resizing image point
                 min_dis = std::numeric_limits<float>::max();
                 if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
-                    updateMin(L2Distance(image.p_min, mouse_pos_in_canvas), ObjectType::BoundTopLeft, 0, 0);
-                    updateMin(L2Distance(image.p_max, mouse_pos_in_canvas), ObjectType::BoundBottomRight, 0, 0);
-                    updateMin(L2Distance(ImVec2(image.p_max.x, image.p_min.y), mouse_pos_in_canvas), ObjectType::BoundTopRight, 0, 0);
-                    updateMin(L2Distance(ImVec2(image.p_min.x, image.p_max.y), mouse_pos_in_canvas), ObjectType::BoundBottomLeft, 0, 0);
+                    updateMin(L2Distance(image.p_min, mouse_pos_in_canvas), ObjectType::ImageTopLeft, 0, 0);
+                    updateMin(L2Distance(image.p_max, mouse_pos_in_canvas), ObjectType::ImageBottomRight, 0, 0);
+                    updateMin(L2Distance({image.p_max.x, image.p_min.y}, mouse_pos_in_canvas), ObjectType::ImageTopRight, 0, 0);
+                    updateMin(L2Distance({image.p_min.x, image.p_max.y}, mouse_pos_in_canvas), ObjectType::ImageBottomLeft, 0, 0);
                 }
-                if (min_dis < threshold) return;
+                if (min_dis < point_threshold) return;
 
                 // resizing image handle
                 min_dis = std::numeric_limits<float>::max();
                 if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
-                    if (image.p_min.x <= mouse_pos_in_canvas.x && mouse_pos_in_canvas.x <= image.p_max.x) {
-                        updateMin(fabsf(mouse_pos_in_canvas.y-image.p_min.y), ObjectType::BoundTop, 0, 0);
-                        updateMin(fabsf(mouse_pos_in_canvas.y-image.p_max.y), ObjectType::BoundBottom, 0, 0);
+                    if (image.p_min.x < mouse_pos_in_canvas.x && mouse_pos_in_canvas.x < image.p_max.x) {
+                        updateMin(std::fabsf(mouse_pos_in_canvas.y-image.p_min.y), ObjectType::ImageTop, 0, 0);
+                        updateMin(std::fabsf(mouse_pos_in_canvas.y-image.p_max.y), ObjectType::ImageBottom, 0, 0);
                     }
-                    if (image.p_min.y <= mouse_pos_in_canvas.y && mouse_pos_in_canvas.y <= image.p_max.y) {
-                        updateMin(fabsf(mouse_pos_in_canvas.x-image.p_min.x), ObjectType::BoundLeft, 0, 0);
-                        updateMin(fabsf(mouse_pos_in_canvas.x-image.p_max.x), ObjectType::BoundRight, 0, 0);
+                    if (image.p_min.y < mouse_pos_in_canvas.y && mouse_pos_in_canvas.y < image.p_max.y) {
+                        updateMin(std::fabsf(mouse_pos_in_canvas.x-image.p_min.x), ObjectType::ImageLeft, 0, 0);
+                        updateMin(std::fabsf(mouse_pos_in_canvas.x-image.p_max.x), ObjectType::ImageRight, 0, 0);
                     }
                 }
-                if (min_dis < handle_threshold) return;
+                if (min_dis < line_threshold) return;
 
                 // path
                 min_dis = std::numeric_limits<float>::max();
@@ -411,14 +438,14 @@ namespace CFSUI::Canvas {
                         const float p3x = points[j+3].x, p3y = points[j+3].y;
                         const float px = mouse_pos_in_canvas.x, py = mouse_pos_in_canvas.y;
                         // collinear
-                        if (fabsf((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
-                            && fabsf((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
-                            const float val = fabsf((p3y - p0y) * px - (p3x - p0x) * py + p3x*p0y - p0x*p3y);
+                        if (std::fabsf((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
+                            && std::fabsf((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
+                            const float val = std::fabsf((p3y - p0y) * px - (p3x - p0x) * py + p3x*p0y - p0x*p3y);
                             updateMin(val/std::hypotf(p3y-p0y, p3x-p0x), ObjectType::Path, i, 0);
                         }
                     }
                 }
-                if (min_dis < threshold) return;
+                if (min_dis < line_threshold) return;
 
                 // image
                 for (int i = static_cast<int>(images.size()) - 1; i >= 0; i--) {
@@ -479,21 +506,112 @@ namespace CFSUI::Canvas {
                     (*point_ptr).x += io.MouseDelta.x;
                     (*point_ptr).y += io.MouseDelta.y;
                 }
-                if (selected_type == ObjectType::Image) {
+                if (selected_type == ObjectType::Path) {
+                    auto& path = paths[selected_path_idx];
+                    if (hovered_type == ObjectType::PathTop) {
+                        const auto p_max_y = path.p_max.y;
+                        const auto ratio = (p_max_y - mouse_pos_in_canvas.y)  / (p_max_y - path.p_min.y);
+                        path.p_min.y = mouse_pos_in_canvas.y;
+                        for (auto& point : path.points) {
+                            point.y = p_max_y - ratio * (p_max_y - point.y);
+                        }
+                    }
+                    else if (hovered_type == ObjectType::PathBottom) {
+                        const auto p_min_y = path.p_min.y;
+                        const auto ratio = (mouse_pos_in_canvas.y - p_min_y) / (path.p_max.y - p_min_y);
+                        path.p_max.y = mouse_pos_in_canvas.y;
+                        for (auto& point : path.points) {
+                            point.y = p_min_y + ratio * (point.y - p_min_y);
+                        }
+                    }
+                    else if (hovered_type == ObjectType::PathLeft) {
+                        const auto p_max_x = path.p_max.x;
+                        const auto ratio = (p_max_x - mouse_pos_in_canvas.x) / (path.p_max.x - path.p_min.x);
+                        path.p_min.x = mouse_pos_in_canvas.x;
+                        for (auto& point : path.points) {
+                            point.x = p_max_x - ratio * (p_max_x - point.x);
+                        }
+                    }
+                    else if (hovered_type == ObjectType::PathRight) {
+                        const auto p_min_x = path.p_min.x;
+                        const auto ratio = (mouse_pos_in_canvas.x - p_min_x) / (path.p_max.x - path.p_min.x);
+
+                        path.p_max.x = mouse_pos_in_canvas.x;
+                        for (auto& point : path.points) {
+                            point.x = p_min_x + ratio * (point.x - p_min_x);
+                        }
+
+                    }
+                    else if (hovered_type == ObjectType::PathTopLeft) {
+                        const auto p_max_x = path.p_max.x;
+                        const auto p_max_y = path.p_max.y;
+                        const auto ratio = std::max((p_max_x - mouse_pos_in_canvas.x) / (p_max_x - path.p_min.x),
+                                                    (p_max_y - mouse_pos_in_canvas.y) / (p_max_y - path.p_min.y));
+
+                        path.p_min.x = p_max_x - ratio * (p_max_x - path.p_min.x);
+                        path.p_min.y = p_max_y - ratio * (p_max_y - path.p_min.y);
+                        for (auto& point : path.points) {
+                            point.x = p_max_x - ratio * (p_max_x - point.x);
+                            point.y = p_max_y - ratio * (p_max_y - point.y);
+                        }
+                    }
+                    else if (hovered_type == ObjectType::PathTopRight) {
+                        const auto p_min_x = path.p_min.x;
+                        const auto p_max_y = path.p_max.y;
+                        const auto ratio = std::max((mouse_pos_in_canvas.x - p_min_x) / (path.p_max.x - p_min_x),
+                                                    (p_max_y - mouse_pos_in_canvas.y) / (p_max_y - path.p_min.y));
+
+                        path.p_max.x = p_min_x + ratio * (path.p_max.x - p_min_x);
+                        path.p_min.y = p_max_y - ratio * (p_max_y - path.p_min.y);
+                        for (auto& point : path.points) {
+                            point.x = p_min_x + ratio * (point.x - p_min_x);
+                            point.y = p_max_y - ratio * (p_max_y - point.y);
+                        }
+                    }
+                    else if (hovered_type == ObjectType::PathBottomLeft) {
+                        const auto p_max_x = path.p_max.x;
+                        const auto p_min_y = path.p_min.y;
+                        const auto ratio = std::max((p_max_x - mouse_pos_in_canvas.x) / (p_max_x - path.p_min.x),
+                                                    (mouse_pos_in_canvas.y - p_min_y) / (path.p_max.y - p_min_y));
+
+                        path.p_min.x = p_max_x - ratio * (p_max_x - path.p_min.x);
+                        path.p_max.y = p_min_y + ratio * (path.p_max.y - p_min_y);
+                        for (auto& point : path.points) {
+                            point.x = p_max_x - ratio * (p_max_x - point.x);
+                            point.y = p_min_y + ratio * (point.y - p_min_y);
+                        }
+                    }
+                    else if (hovered_type == ObjectType::PathBottomRight) {
+                        const auto p_min_x = path.p_min.x;
+                        const auto p_min_y = path.p_min.y;
+                        const auto ratio = std::max((mouse_pos_in_canvas.x - p_min_x) / (path.p_max.x - p_min_x),
+                                                    (mouse_pos_in_canvas.y - p_min_y) / (path.p_max.y - p_min_y));
+
+                        path.p_max.x = p_min_x + ratio * (path.p_max.x - p_min_x);
+                        path.p_max.y = p_min_y + ratio * (path.p_max.y - p_min_y);
+                        for (auto& point : path.points) {
+                            point.x = p_min_x + ratio * (point.x - p_min_x);
+                            point.y = p_min_y + ratio * (point.y - p_min_y);
+                        }
+
+                    }
+
+                }
+                else if (selected_type == ObjectType::Image) {
                     auto& image = images[selected_image_idx];
-                    if (hovered_type == ObjectType::BoundTop) {
+                    if (hovered_type == ObjectType::ImageTop) {
                         image.p_min.y = mouse_pos_in_canvas.y;
                     }
-                    else if (hovered_type == ObjectType::BoundBottom) {
+                    else if (hovered_type == ObjectType::ImageBottom) {
                         image.p_max.y = mouse_pos_in_canvas.y;
                     }
-                    else if (hovered_type == ObjectType::BoundLeft) {
+                    else if (hovered_type == ObjectType::ImageLeft) {
                         image.p_min.x = mouse_pos_in_canvas.x;
                     }
-                    else if (hovered_type == ObjectType::BoundRight) {
+                    else if (hovered_type == ObjectType::ImageRight) {
                         image.p_max.x = mouse_pos_in_canvas.x;
                     }
-                    else if (hovered_type == ObjectType::BoundTopLeft) {
+                    else if (hovered_type == ObjectType::ImageTopLeft) {
                         float& p_min_x = image.p_min.x;
                         float& p_min_y = image.p_min.y;
                         const float p_max_x = image.p_max.x;
@@ -511,7 +629,7 @@ namespace CFSUI::Canvas {
                             p_min_x = p_max_x - height * prev_width_height_ratio;
                         }
                     }
-                    else if (hovered_type == ObjectType::BoundTopRight) {
+                    else if (hovered_type == ObjectType::ImageTopRight) {
                         float& p_max_x = image.p_max.x;
                         float& p_min_y = image.p_min.y;
                         const float p_min_x = image.p_min.x;
@@ -529,7 +647,7 @@ namespace CFSUI::Canvas {
                             p_max_x = p_min_x + height * prev_width_height_ratio;
                         }
                     }
-                    else if (hovered_type == ObjectType::BoundBottomLeft) {
+                    else if (hovered_type == ObjectType::ImageBottomLeft) {
                         float& p_min_x = image.p_min.x;
                         float& p_max_y = image.p_max.y;
                         const float p_max_x = image.p_max.x;
@@ -547,7 +665,7 @@ namespace CFSUI::Canvas {
                             p_min_x = p_max_x - height * prev_width_height_ratio;
                         }
                     }
-                    else if (hovered_type == ObjectType::BoundBottomRight) {
+                    else if (hovered_type == ObjectType::ImageBottomRight) {
                         float& p_max_x = image.p_max.x;
                         float& p_max_y = image.p_max.y;
                         const float p_min_x = image.p_min.x;
@@ -636,22 +754,20 @@ namespace CFSUI::Canvas {
             }
 */
 
-            if (hovered_type == ObjectType::PathPoint || hovered_type == ObjectType::CtrlPoint) {
-                ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
-            }
-            else if (hovered_type == ObjectType::Path) {
-                ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
-            }
-            else if (hovered_type == ObjectType::BoundTop || hovered_type == ObjectType::BoundBottom) {
+            if (hovered_type == ObjectType::PathTop || hovered_type == ObjectType::PathBottom
+                || hovered_type == ObjectType::ImageTop || hovered_type == ObjectType::ImageBottom) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
             }
-            else if (hovered_type == ObjectType::BoundLeft || hovered_type == ObjectType::BoundRight) {
+            else if (hovered_type == ObjectType::PathLeft || hovered_type == ObjectType::PathRight
+                    || hovered_type == ObjectType::ImageLeft || hovered_type == ObjectType::ImageRight) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
             }
-            else if (hovered_type == ObjectType::BoundTopLeft || hovered_type == ObjectType::BoundBottomRight) {
+            else if (hovered_type == ObjectType::PathTopLeft || hovered_type == ObjectType::PathBottomRight
+                     || hovered_type == ObjectType::ImageTopLeft || hovered_type == ObjectType::ImageBottomRight) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
             }
-            else if (hovered_type == ObjectType::BoundTopRight || hovered_type == ObjectType::BoundBottomLeft) {
+            else if (hovered_type == ObjectType::PathTopRight || hovered_type == ObjectType::PathBottomLeft
+                     || hovered_type == ObjectType::ImageTopRight || hovered_type == ObjectType::ImageBottomLeft) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNESW);
             }
             else {
@@ -818,7 +934,7 @@ namespace CFSUI::Canvas {
                 }
             }
             // 3.3 draw selected image's resizing point
-            else if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
+            if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                 const auto& image = images[selected_image_idx];
                 draw_list->AddCircleFilled(transform(image.p_min), point_radius, selected_color);
                 draw_list->AddCircleFilled(transform(ImVec2(image.p_min.x, image.p_max.y)), point_radius, selected_color);
