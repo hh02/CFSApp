@@ -290,12 +290,52 @@ namespace CFSUI::Canvas {
                     // update path's p_min and p_max
                     ImVec2 p_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
                     ImVec2 p_max(std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
+                    if (paths[selected_path_idx].is_closed) {
+                        paths[selected_path_idx].points.emplace_back(paths[selected_path_idx].points[0]);
+                    }
                     const auto& points = paths[selected_path_idx].points;
-                    for (size_t i = 0; i < points.size(); i += 3) {
+                    for (size_t i = 0; i+3 < points.size(); i += 3) {
+                        const float xa = 3.f * (-points[i].x + 3.f*points[i+1].x - 3.f*points[i+2].x + points[i+3].x);
+                        const float xb = 6.f * (points[i].x - 2.f*points[i+1].x + points[i+2].x);
+                        const float xc = 3.f * (points[i+1].x - points[i].x);
+                        if (std::fabsf(xa - 0.f) > 0.001) {
+                            float t = (-xb + std::sqrtf(xb*xb - 4.f*xa*xc)) / (2.f*xa);
+                            if (0.f < t && t < 1.f) {
+                                const float val = points[i].x*std::powf(1.f-t, 3) + 3.f*points[i+1].x*t*std::powf(1.f-t, 2) + 3.f*points[i+2].x*std::powf(t, 2)*(1.f-t) + points[i+3].x * std::powf(t, 3);
+                                p_min.x = std::min(p_min.x, val);
+                                p_max.x = std::max(p_max.x, val);
+                            }
+                            t = (-xb - std::sqrtf(xb*xb - 4.f*xa*xc)) / (2.f*xa);
+                            if (0.f < t && t < 1.f) {
+                                const float val = points[i].x*std::powf(1.f-t, 3) + 3.f*points[i+1].x*t*std::powf(1.f-t, 2) + 3.f*points[i+2].x*std::powf(t, 2)*(1.f-t) + points[i+3].x * std::powf(t, 3);
+                                p_min.x = std::min(p_min.x, val);
+                                p_max.x = std::max(p_max.x, val);
+                            }
+                        }
+                        const float ya = 3.f * (-points[i].y + 3.f*points[i+1].y - 3.f*points[i+2].y + points[i+3].y);
+                        const float yb = 6.f * (points[i].y - 2.f*points[i+1].y + points[i+2].y);
+                        const float yc = 3.f * (points[i+1].y - points[i].y);
+                        if (std::fabsf(ya - 0.f) > 0.001) {
+                            float t = (-yb + std::sqrtf(yb*yb - 4.f*ya*yc)) / (2.f*ya);
+                            if (0.f < t && t < 1.f) {
+                                const float val = points[i].y*std::powf(1.f-t, 3) + 3.f*points[i+1].y*t*std::powf(1.f-t, 2) + 3.f*points[i+2].y*std::powf(t, 2)*(1.f-t) + points[i+3].y * std::powf(t, 3);
+                                p_min.y = std::min(p_min.y, val);
+                                p_max.y = std::max(p_max.y, val);
+                            }
+                            t = (-yb - std::sqrtf(yb*yb - 4.f*ya*yc)) / (2.f*ya);
+                            if (0.f < t && t < 1.f) {
+                                const float val = points[i].y*std::powf(1.f-t, 3) + 3.f*points[i+1].y*t*std::powf(1.f-t, 2) + 3.f*points[i+2].y*std::powf(t, 2)*(1.f-t) + points[i+3].y * std::powf(t, 3);
+                                p_min.y = std::min(p_min.y, val);
+                                p_max.y = std::max(p_max.y, val);
+                            }
+                        }
                         p_min.x = std::min(p_min.x, points[i].x);
                         p_min.y = std::min(p_min.y, points[i].y);
                         p_max.x = std::max(p_max.x, points[i].x);
                         p_max.y = std::max(p_max.y, points[i].y);
+                    }
+                    if (paths[selected_path_idx].is_closed) {
+                        paths[selected_path_idx].points.pop_back();
                     }
                     paths[selected_path_idx].p_min = p_min;
                     paths[selected_path_idx].p_max = p_max;
