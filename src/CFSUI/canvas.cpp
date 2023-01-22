@@ -10,6 +10,7 @@
 
 
 namespace CFSUI::Canvas {
+    // dragged eps
     const float eps = 2.0f;
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
         return std::hypot(a.x - b.x, a.y - b.y);
