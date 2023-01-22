@@ -612,77 +612,28 @@ namespace CFSUI::Canvas {
                         image.p_max.x = mouse_pos_in_canvas.x;
                     }
                     else if (hovered_type == ObjectType::ImageTopLeft) {
-                        float& p_min_x = image.p_min.x;
-                        float& p_min_y = image.p_min.y;
-                        const float p_max_x = image.p_max.x;
-                        const float p_max_y = image.p_max.y;
-                        const float width = p_max_x - mouse_pos_in_canvas.x;
-                        const float height = p_max_y - mouse_pos_in_canvas.y;
-                        const float width_height_ratio = width / height;
-                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
-
-                        if (width_height_ratio > prev_width_height_ratio) {
-                            p_min_x = mouse_pos_in_canvas.x;
-                            p_min_y = p_max_y - width / prev_width_height_ratio;
-                        } else {
-                            p_min_y = mouse_pos_in_canvas.y;
-                            p_min_x = p_max_x - height * prev_width_height_ratio;
-                        }
+                        const auto ratio = std::max((image.p_max.x - mouse_pos_in_canvas.x) / (image.p_max.x - image.p_min.x),
+                                                    (image.p_max.y - mouse_pos_in_canvas.y) / (image.p_max.y - image.p_min.y));
+                        image.p_min.x = image.p_max.x - ratio * (image.p_max.x - image.p_min.x);
+                        image.p_min.y = image.p_max.y - ratio * (image.p_max.y - image.p_min.y);
                     }
                     else if (hovered_type == ObjectType::ImageTopRight) {
-                        float& p_max_x = image.p_max.x;
-                        float& p_min_y = image.p_min.y;
-                        const float p_min_x = image.p_min.x;
-                        const float p_max_y = image.p_max.y;
-                        const float width = mouse_pos_in_canvas.x - p_min_x;
-                        const float height = p_max_y - mouse_pos_in_canvas.y;
-                        const float width_height_ratio = width / height;
-                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
-
-                        if (width_height_ratio > prev_width_height_ratio) {
-                            p_max_x = mouse_pos_in_canvas.x;
-                            p_min_y = p_max_y - width / prev_width_height_ratio;
-                        } else {
-                            p_min_y = mouse_pos_in_canvas.y;
-                            p_max_x = p_min_x + height * prev_width_height_ratio;
-                        }
+                        const auto ratio = std::max((mouse_pos_in_canvas.x - image.p_min.x) / (image.p_max.x - image.p_min.x),
+                                                    (image.p_max.y - mouse_pos_in_canvas.y) / (image.p_max.y - image.p_min.y));
+                        image.p_max.x = image.p_min.x + ratio * (image.p_max.x - image.p_min.x);
+                        image.p_min.y = image.p_max.y - ratio * (image.p_max.y - image.p_min.y);
                     }
                     else if (hovered_type == ObjectType::ImageBottomLeft) {
-                        float& p_min_x = image.p_min.x;
-                        float& p_max_y = image.p_max.y;
-                        const float p_max_x = image.p_max.x;
-                        const float p_min_y = image.p_min.y;
-                        const float width = p_max_x - mouse_pos_in_canvas.x;
-                        const float height = mouse_pos_in_canvas.y - p_min_y;
-                        const float width_height_ratio = width / height;
-                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
-
-                        if (width_height_ratio > prev_width_height_ratio) {
-                            p_min_x = mouse_pos_in_canvas.x;
-                            p_max_y = p_min_y + width / prev_width_height_ratio;
-                        } else {
-                            p_max_y = mouse_pos_in_canvas.y;
-                            p_min_x = p_max_x - height * prev_width_height_ratio;
-                        }
+                        const auto ratio = std::max((image.p_max.x - mouse_pos_in_canvas.x) / (image.p_max.x - image.p_min.x),
+                                                    (mouse_pos_in_canvas.y - image.p_min.y) / (image.p_max.y - image.p_min.y));
+                        image.p_min.x = image.p_max.x - ratio * (image.p_max.x - image.p_min.x);
+                        image.p_max.y = image.p_min.y + ratio * (image.p_max.y - image.p_min.y);
                     }
                     else if (hovered_type == ObjectType::ImageBottomRight) {
-                        float& p_max_x = image.p_max.x;
-                        float& p_max_y = image.p_max.y;
-                        const float p_min_x = image.p_min.x;
-                        const float p_min_y = image.p_min.y;
-                        const float width = mouse_pos_in_canvas.x - p_min_x;
-                        const float height = mouse_pos_in_canvas.y - p_min_y;
-                        const float width_height_ratio = width / height;
-                        const float prev_width_height_ratio = (p_max_x - p_min_x) / (p_max_y - p_min_y);
-
-                        if (width_height_ratio > prev_width_height_ratio) {
-                            p_max_x = mouse_pos_in_canvas.x;
-                            p_max_y = p_min_y + width / prev_width_height_ratio;
-                        } else {
-                            p_max_y = mouse_pos_in_canvas.y;
-                            p_max_x = p_min_x + height * prev_width_height_ratio;
-                        }
-
+                        const auto ratio = std::max((mouse_pos_in_canvas.x - image.p_min.x) / (image.p_max.x - image.p_min.x),
+                                                    (mouse_pos_in_canvas.y - image.p_min.y) / (image.p_max.y - image.p_min.y));
+                        image.p_max.x = image.p_min.x + ratio * (image.p_max.x - image.p_min.x);
+                        image.p_max.y = image.p_min.y + ratio * (image.p_max.y - image.p_min.y);
                     }
                 }
                 mouse_moved_distance.x += std::fabsf(io.MouseDelta.x);
