@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <cmath>
 
 #include <xmmintrin.h>
 #include <smmintrin.h>
@@ -176,7 +177,7 @@ namespace CubicSplineTest
     QuinticSolver::QuinticSolver(float tolerance)
     {
         tolerance_ = tolerance;
-        max_divisions_ = 1 + (uint32)log2(1.f / tolerance_);
+        max_divisions_ = 1 + (uint32)std::log2f(1.f / tolerance_);
         interval_storage_.reserve(max_divisions_ * 2);
     }
 

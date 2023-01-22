@@ -763,7 +763,7 @@ namespace CFSUI::Canvas {
             }
             // 2.3 selected path's bounding box
             else if (selected_type == ObjectType::Path) {
-                std::cout << "path's bounding box" << std::endl;
+//                std::cout << "path's bounding box" << std::endl;
                 draw_list->AddRect(transform(paths[selected_path_idx].p_min),
                                    transform(paths[selected_path_idx].p_max),
                                    selected_color, 0.0f, 0, bounding_thickness);
