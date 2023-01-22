@@ -13,8 +13,7 @@
 //-----------------------------------------------------------------------------
 
 #pragma once
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
+#include "CubicSpline.h"
 
 //---- Define assertion handler. Defaults to calling assert().
 // If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.
@@ -81,9 +80,12 @@
 
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
+/*
 #define IM_VEC2_CLASS_EXTRA                                                     \
-        ImVec2(const Eigen::Vector2f& f) : x(f.x()), y(f.y()) {}                   \
-        operator Eigen::Vector2f() const { return Eigen::Vector2f(x,y); }
+        constexpr ImVec2(const CubicSplineTest::WorldSpace& f) : x(f.x()), y(f.y()) {}                   \
+        operator CubicSplineTest::WorldSpace() const { return CubicSplineTest::WorldSpace(x , y, 0.0f); }
+*/
+
 
 /*
 #define IM_VEC4_CLASS_EXTRA                                                     \

@@ -9,7 +9,6 @@
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
-#include "my_imconfig.h"
 #include <imgui.h>
 #include <cstdio>
 #include <cmath>
@@ -27,13 +26,13 @@ namespace CFSUI::Canvas {
     using Node = std::array<ImVec2, 3>;
     // One node has three points: 1 path point, 2 control points
     struct Path {
-        std::vector<Node> nodes;
+        std::vector<ImVec2> points;
         bool is_closed;
         ImVec2 p_min;
         ImVec2 p_max;
 
         // A path at least has one node
-        Path() : nodes(), is_closed(false), p_min(), p_max() {}
+        Path() : points(), is_closed(false), p_min(), p_max() {}
     };
 
     enum class ObjectType {
