@@ -8,5 +8,7 @@
 namespace CFSUI::svg {
 
     void load_path(const char* filename, std::vector<Canvas::Path>& paths);
+    void save_path(const char* filename, const std::vector<Canvas::Path>& paths);
+
 }
 #endif //CFSAPP_SVG_H

@@ -95,6 +95,18 @@ namespace CFSUI::Canvas {
                 svg::load_path(filename, paths);
             }
             ImGui::SameLine();
+            if (ImGui::Button("Save paths")) {
+                static char const* filterPatterns[1] = {"*.svg"};
+                auto filename = tinyfd_saveFileDialog(
+                        "Save paths",
+                        "",
+                        1,
+                        filterPatterns,
+                        "svg files"
+                        );
+                svg::save_path(filename, paths);
+            }
+            ImGui::SameLine();
             static bool preview_mode = false;
             ImGui::Checkbox("Preview mode", &preview_mode);
 
