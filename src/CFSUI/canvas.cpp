@@ -349,7 +349,14 @@ namespace CFSUI::Canvas {
                         p_max.x = std::max(p_max.x, points[i].x);
                         p_max.y = std::max(p_max.y, points[i].y);
                     }
-                    if (paths[selected_path_idx].is_closed) {
+                    // update the last point
+                    if (!paths[selected_path_idx].is_closed) {
+                        p_min.x = std::min(p_min.x, points[points.size()-3].x);
+                        p_min.y = std::min(p_min.y, points[points.size()-3].y);
+                        p_max.x = std::max(p_max.x, points[points.size()-3].x);
+                        p_max.y = std::max(p_max.y, points[points.size()-3].y);
+                    }
+                    else {
                         paths[selected_path_idx].points.pop_back();
                     }
                     paths[selected_path_idx].p_min = p_min;
