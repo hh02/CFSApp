@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include "canvas.h"
+#include "svg.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_WINDOWS_UTF8
 #include "stb_image.h"
@@ -80,6 +81,18 @@ namespace CFSUI::Canvas {
                 bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
                 IM_ASSERT(ret);
                 images.emplace_back(image_texture, image_width, image_height);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Open path")) {
+                static char const * filterPatterns[1] = {"*.svg"};
+                auto filename = tinyfd_openFileDialog(
+                        "Open a svg",
+                        "",
+                        1,
+                        filterPatterns,
+                        "svg files",
+                        0);
+                svg::load_path(filename, paths);
             }
             ImGui::SameLine();
             static bool preview_mode = false;
