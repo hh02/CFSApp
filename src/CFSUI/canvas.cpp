@@ -242,6 +242,9 @@ namespace CFSUI::Canvas {
             static auto is_image = [] {
                 return hovered_type == ObjectType::Image;
             };
+            static auto is_path = [] {
+                return hovered_type == ObjectType::Path;
+            };
             static auto is_start_point = []() {
                 size_t siz = paths[selected_path_idx].points.size();
                 return L2Distance(paths[selected_path_idx].points[siz-3], paths[selected_path_idx].points[0]) < point_threshold;
@@ -723,6 +726,9 @@ namespace CFSUI::Canvas {
                 mouse_moved_distance.x += std::fabsf(io.MouseDelta.x);
                 mouse_moved_distance.y += std::fabsf(io.MouseDelta.y);
             };
+            static auto show_path_popup = [] {
+                ImGui::OpenPopup("path_popup");
+            };
             static auto show_image_popup = [] {
                 ImGui::OpenPopup("image_popup");
             };
@@ -745,6 +751,7 @@ namespace CFSUI::Canvas {
                             Normal_s + event<mouse_left_clicked> [is_blank] / unselect,
                             Normal_s + event<mouse_left_clicked> [!is_blank] / (update_selected, set_moving_context) = Moving_s,
                             Normal_s + event<mouse_right_clicked> [is_image] / (update_selected, show_image_popup),
+                            Normal_s + event<mouse_right_clicked> [is_path] / (update_selected, show_path_popup),
                             Inserting_s + event<mouse_left_clicked> [is_inserting_first] / new_node,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && !is_start_point] = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
@@ -810,6 +817,14 @@ namespace CFSUI::Canvas {
             }
 
             // TODO: better name
+            if (ImGui::BeginPopup("path_popup")) {
+                if (ImGui::Selectable("delete")) {
+                    paths.erase(paths.begin() + selected_path_idx);
+                    selected_type = ObjectType::None;
+                    hovered_type = ObjectType::None;
+                }
+                ImGui::EndPopup();
+            }
             if (ImGui::BeginPopup("image_popup")) {
                 if (ImGui::Selectable("lock")) {
                     images[selected_image_idx].locked = true;
