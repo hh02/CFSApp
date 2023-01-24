@@ -294,8 +294,6 @@ namespace CFSUI::Canvas {
 
             static auto update_selected = [] {
                 // select node only when select the path point of the node
-                has_prev = false;
-                has_next = false;
                 if (hovered_type == ObjectType::PathPoint) {
                     selected_type = hovered_type;
                     selected_path_idx = hovered_path_idx;
@@ -850,6 +848,8 @@ namespace CFSUI::Canvas {
 
             // layer 2 lines and curves----------
             ImVec2 dummy;
+            has_prev = has_prev && (selected_type == ObjectType::PathPoint);
+            has_next = has_next && (selected_type == ObjectType::PathPoint);
             const auto& prev_p0 = has_prev ? paths[selected_path_idx].points[prev_p0_idx] : dummy;
             const auto& prev_p1 = has_prev ? paths[selected_path_idx].points[prev_p1_idx] : dummy;
             const auto& prev_p2 = has_prev ? paths[selected_path_idx].points[prev_p2_idx] : dummy;
