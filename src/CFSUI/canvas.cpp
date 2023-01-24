@@ -75,12 +75,14 @@ namespace CFSUI::Canvas {
                         filterPatterns,
                         "image files",
                         0);
-                int image_width = 0;
-                int image_height = 0;
-                GLuint image_texture = 0;
-                bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
-                IM_ASSERT(ret);
-                images.emplace_back(image_texture, image_width, image_height);
+                if (filename != nullptr) {
+                    int image_width = 0;
+                    int image_height = 0;
+                    GLuint image_texture = 0;
+                    bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
+                    IM_ASSERT(ret);
+                    images.emplace_back(image_texture, image_width, image_height);
+                }
             }
             ImGui::SameLine();
             if (ImGui::Button("Open path")) {
