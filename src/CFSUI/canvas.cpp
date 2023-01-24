@@ -92,7 +92,9 @@ namespace CFSUI::Canvas {
                         filterPatterns,
                         "svg files",
                         0);
-                svg::load_path(filename, paths);
+                if (filename != nullptr) {
+                    svg::load_path(filename, paths);
+                }
             }
             ImGui::SameLine();
             if (ImGui::Button("Save paths")) {
@@ -104,7 +106,9 @@ namespace CFSUI::Canvas {
                         filterPatterns,
                         "svg files"
                         );
-                svg::save_path(filename, paths);
+                if (filename != nullptr) {
+                    svg::save_path(filename, paths);
+                }
             }
             ImGui::SameLine();
             static bool preview_mode = false;
