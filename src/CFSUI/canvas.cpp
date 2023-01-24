@@ -293,9 +293,10 @@ namespace CFSUI::Canvas {
             };
 
             static auto update_selected = [] {
+                selected_type = hovered_type;
+
                 // select node only when select the path point of the node
                 if (hovered_type == ObjectType::PathPoint) {
-                    selected_type = hovered_type;
                     selected_path_idx = hovered_path_idx;
                     selected_point_idx = hovered_point_idx;
 
@@ -313,7 +314,6 @@ namespace CFSUI::Canvas {
                     }
                 }
                 else if (hovered_type == ObjectType::Path) {
-                    selected_type = hovered_type;
                     selected_path_idx = hovered_path_idx;
 
                     // update path's p_min and p_max
@@ -377,7 +377,6 @@ namespace CFSUI::Canvas {
                     paths[selected_path_idx].p_max = p_max;
                 }
                 else if (hovered_type == ObjectType::Image) {
-                    selected_type = hovered_type;
                     selected_image_idx = hovered_image_idx;
                 }
 
@@ -398,8 +397,9 @@ namespace CFSUI::Canvas {
                 }
                 paths[selected_path_idx].is_closed = true;
                 draw_big_start_point = false;
-                selected_point_idx = 0;
+                hovered_type = ObjectType::PathPoint;
                 hovered_point_idx = 0;
+                update_selected();
             };
             static auto unselect = [] {
                 selected_type = ObjectType::None;
