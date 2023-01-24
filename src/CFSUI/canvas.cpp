@@ -278,6 +278,8 @@ namespace CFSUI::Canvas {
 
             static auto update_selected = [] {
                 // select node only when select the path point of the node
+                has_prev = false;
+                has_next = false;
                 if (hovered_type == ObjectType::PathPoint) {
                     selected_type = hovered_type;
                     selected_path_idx = hovered_path_idx;
