@@ -16,7 +16,7 @@ namespace CFSUI::Canvas {
     const float dragged_eps = 2.0f;
     const float collinear_eps = 0.1f;
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
-        return std::hypotf(a.x - b.x, a.y - b.y);
+        return std::hypot(a.x - b.x, a.y - b.y);
     }
     // Simple helper function to load an image into a OpenGL texture with common settings
     bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height) {
@@ -253,7 +253,7 @@ namespace CFSUI::Canvas {
                 return paths[selected_path_idx].points.size() == 3;
             };
             static auto is_dragged = []{
-                return std::hypotf(mouse_moved_distance.x, mouse_moved_distance.y) > dragged_eps;
+                return std::hypot(mouse_moved_distance.x, mouse_moved_distance.y) > dragged_eps;
             };
             static auto is_open_point = [] {
                 return hovered_type == ObjectType::PathPoint && (!paths[hovered_path_idx].is_closed)
@@ -333,16 +333,16 @@ namespace CFSUI::Canvas {
                         const float xa = 3.f * (-points[i].x + 3.f*points[i+1].x - 3.f*points[i+2].x + points[i+3].x);
                         const float xb = 6.f * (points[i].x - 2.f*points[i+1].x + points[i+2].x);
                         const float xc = 3.f * (points[i+1].x - points[i].x);
-                        if (std::fabsf(xa - 0.f) > 0.001) {
-                            float t = (-xb + std::sqrtf(xb*xb - 4.f*xa*xc)) / (2.f*xa);
+                        if (std::fabs(xa - 0.f) > 0.001) {
+                            float t = (-xb + std::sqrt(xb*xb - 4.f*xa*xc)) / (2.f*xa);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].x*std::powf(1.f-t, 3) + 3.f*points[i+1].x*t*std::powf(1.f-t, 2) + 3.f*points[i+2].x*std::powf(t, 2)*(1.f-t) + points[i+3].x * std::powf(t, 3);
+                                const float val = points[i].x*std::pow(1.f-t, 3) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2) + 3.f*points[i+2].x*std::pow(t, 2)*(1.f-t) + points[i+3].x * std::pow(t, 3);
                                 p_min.x = std::min(p_min.x, val);
                                 p_max.x = std::max(p_max.x, val);
                             }
-                            t = (-xb - std::sqrtf(xb*xb - 4.f*xa*xc)) / (2.f*xa);
+                            t = (-xb - std::sqrt(xb*xb - 4.f*xa*xc)) / (2.f*xa);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].x*std::powf(1.f-t, 3) + 3.f*points[i+1].x*t*std::powf(1.f-t, 2) + 3.f*points[i+2].x*std::powf(t, 2)*(1.f-t) + points[i+3].x * std::powf(t, 3);
+                                const float val = points[i].x*std::pow(1.f-t, 3) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2) + 3.f*points[i+2].x*std::pow(t, 2)*(1.f-t) + points[i+3].x * std::pow(t, 3);
                                 p_min.x = std::min(p_min.x, val);
                                 p_max.x = std::max(p_max.x, val);
                             }
@@ -350,16 +350,16 @@ namespace CFSUI::Canvas {
                         const float ya = 3.f * (-points[i].y + 3.f*points[i+1].y - 3.f*points[i+2].y + points[i+3].y);
                         const float yb = 6.f * (points[i].y - 2.f*points[i+1].y + points[i+2].y);
                         const float yc = 3.f * (points[i+1].y - points[i].y);
-                        if (std::fabsf(ya - 0.f) > 0.001) {
-                            float t = (-yb + std::sqrtf(yb*yb - 4.f*ya*yc)) / (2.f*ya);
+                        if (std::fabs(ya - 0.f) > 0.001) {
+                            float t = (-yb + std::sqrt(yb*yb - 4.f*ya*yc)) / (2.f*ya);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].y*std::powf(1.f-t, 3) + 3.f*points[i+1].y*t*std::powf(1.f-t, 2) + 3.f*points[i+2].y*std::powf(t, 2)*(1.f-t) + points[i+3].y * std::powf(t, 3);
+                                const float val = points[i].y*std::pow(1.f-t, 3) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2) + 3.f*points[i+2].y*std::pow(t, 2)*(1.f-t) + points[i+3].y * std::pow(t, 3);
                                 p_min.y = std::min(p_min.y, val);
                                 p_max.y = std::max(p_max.y, val);
                             }
-                            t = (-yb - std::sqrtf(yb*yb - 4.f*ya*yc)) / (2.f*ya);
+                            t = (-yb - std::sqrt(yb*yb - 4.f*ya*yc)) / (2.f*ya);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].y*std::powf(1.f-t, 3) + 3.f*points[i+1].y*t*std::powf(1.f-t, 2) + 3.f*points[i+2].y*std::powf(t, 2)*(1.f-t) + points[i+3].y * std::powf(t, 3);
+                                const float val = points[i].y*std::pow(1.f-t, 3) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2) + 3.f*points[i+2].y*std::pow(t, 2)*(1.f-t) + points[i+3].y * std::pow(t, 3);
                                 p_min.y = std::min(p_min.y, val);
                                 p_max.y = std::max(p_max.y, val);
                             }
@@ -464,12 +464,12 @@ namespace CFSUI::Canvas {
                 if (selected_type == ObjectType::Path) {
                     const auto& path = paths[selected_path_idx];
                     if (path.p_min.x < mouse_pos_in_canvas.x && mouse_pos_in_canvas.x < path.p_max.x) {
-                        updateMin(std::fabsf(mouse_pos_in_canvas.y-path.p_min.y), ObjectType::PathTop, 0, 0);
-                        updateMin(std::fabsf(mouse_pos_in_canvas.y-path.p_max.y), ObjectType::PathBottom, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.y-path.p_min.y), ObjectType::PathTop, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.y-path.p_max.y), ObjectType::PathBottom, 0, 0);
                     }
                     if (path.p_min.y < mouse_pos_in_canvas.y && mouse_pos_in_canvas.y < path.p_max.y) {
-                        updateMin(std::fabsf(mouse_pos_in_canvas.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
-                        updateMin(std::fabsf(mouse_pos_in_canvas.x - path.p_max.x), ObjectType::PathRight, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.x - path.p_max.x), ObjectType::PathRight, 0, 0);
                     }
                 }
                 if (min_dis < line_threshold) return;
@@ -491,12 +491,12 @@ namespace CFSUI::Canvas {
                 if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
                     if (image.p_min.x < mouse_pos_in_canvas.x && mouse_pos_in_canvas.x < image.p_max.x) {
-                        updateMin(std::fabsf(mouse_pos_in_canvas.y-image.p_min.y), ObjectType::ImageTop, 0, 0);
-                        updateMin(std::fabsf(mouse_pos_in_canvas.y-image.p_max.y), ObjectType::ImageBottom, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.y-image.p_min.y), ObjectType::ImageTop, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.y-image.p_max.y), ObjectType::ImageBottom, 0, 0);
                     }
                     if (image.p_min.y < mouse_pos_in_canvas.y && mouse_pos_in_canvas.y < image.p_max.y) {
-                        updateMin(std::fabsf(mouse_pos_in_canvas.x-image.p_min.x), ObjectType::ImageLeft, 0, 0);
-                        updateMin(std::fabsf(mouse_pos_in_canvas.x-image.p_max.x), ObjectType::ImageRight, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.x-image.p_min.x), ObjectType::ImageLeft, 0, 0);
+                        updateMin(std::fabs(mouse_pos_in_canvas.x-image.p_max.x), ObjectType::ImageRight, 0, 0);
                     }
                 }
                 if (min_dis < line_threshold) return;
@@ -525,10 +525,10 @@ namespace CFSUI::Canvas {
                         const float p3x = points[j+3].x, p3y = points[j+3].y;
                         const float px = mouse_pos_in_canvas.x, py = mouse_pos_in_canvas.y;
                         // collinear
-                        if (std::fabsf((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
-                            && std::fabsf((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
-                            const float val = std::fabsf((p3y - p0y) * px - (p3x - p0x) * py + p3x*p0y - p0x*p3y);
-                            updateMin(val/std::hypotf(p3y-p0y, p3x-p0x), ObjectType::Path, i, 0);
+                        if (std::fabs((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
+                            && std::fabs((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
+                            const float val = std::fabs((p3y - p0y) * px - (p3x - p0x) * py + p3x*p0y - p0x*p3y);
+                            updateMin(val/std::hypot(p3y-p0y, p3x-p0x), ObjectType::Path, i, 0);
                         }
                     }
                 }
@@ -723,8 +723,8 @@ namespace CFSUI::Canvas {
                         image.p_max.y = image.p_min.y + ratio * (image.p_max.y - image.p_min.y);
                     }
                 }
-                mouse_moved_distance.x += std::fabsf(io.MouseDelta.x);
-                mouse_moved_distance.y += std::fabsf(io.MouseDelta.y);
+                mouse_moved_distance.x += std::fabs(io.MouseDelta.x);
+                mouse_moved_distance.y += std::fabs(io.MouseDelta.y);
             };
             static auto show_path_popup = [] {
                 ImGui::OpenPopup("path_popup");
