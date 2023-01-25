@@ -434,7 +434,7 @@ namespace CubicSplineTest
         {
             const Interval& interval = root_intervals[i];
             float root = SolveBisection(polynomial, interval.min, interval.max);
-            if (!isnan(root))
+            if (!std::isnan(root))
             {
                 out_roots[num_real_roots++] = root;
             }
