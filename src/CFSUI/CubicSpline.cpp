@@ -8,7 +8,9 @@
 #include <xmmintrin.h>
 #include <smmintrin.h>
 
+#ifndef __GNUC__
 #define USE_SIMD_OPTIMIZATION
+#endif
 
 namespace CubicSplineTest
 {
