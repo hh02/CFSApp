@@ -163,11 +163,11 @@ namespace CFSUI::Canvas {
             // mouse status
             const bool is_mouse_left_clicked = is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             const bool is_mouse_left_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-            const bool is_mouse_left_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.f);
+            const bool is_mouse_left_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.5f);
             const bool is_mouse_right_released = is_hovered &&  ImGui::IsMouseReleased(ImGuiMouseButton_Right);
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
-            const bool is_mouse_moved = (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
-            const bool is_mouse_scrolled = (io.MouseWheel != 0);
+            const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
+            const bool is_mouse_scrolled = is_hovered && (io.MouseWheel != 0);
             const ImVec2 mouse_pos_in_canvas((io.MousePos.x-translate.x)/scaling, (io.MousePos.y-translate.y) / scaling);
 
             // set properties
@@ -733,16 +733,16 @@ namespace CFSUI::Canvas {
                             * Normal_s + event<mouse_moved> / update_hovered,
                             Normal_s + event<mouse_scrolled> / zoom,
                             Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
-                            Normal_s + event<mouse_left_clicked> [is_open_point] / new_node = Inserting_s,
-                            Normal_s + event<mouse_left_clicked> [!is_open_point] / update_selected,
+                            Normal_s + event<mouse_left_clicked> / update_selected,
                             Normal_s + event<mouse_left_dragging> / set_moving_context = Moving_s,
+                            Normal_s + event<mouse_left_released> [is_open_point] / new_node = Inserting_s,
                             Normal_s + event<mouse_right_dragging> = Dragging_s,
                             Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
                             Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
                             Dragging_s + event<mouse_right_released> = Normal_s,
                             Dragging_s + event<mouse_moved> / update_translate,
-                            Inserting_s + event<mouse_left_clicked> [is_inserting_first] / new_node,
-                            Inserting_s + event<mouse_left_clicked> [!is_inserting_first && !is_start_point] = Normal_s,
+                            Inserting_s + event<mouse_left_released> [is_inserting_first] / new_node,
+                            Inserting_s + event<mouse_left_released> [!is_inserting_first && !is_start_point] = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
                             Inserting_s + event<mouse_moved> / update_inserting_points_pos,
                             Moving_s + event<mouse_moved> / update_moving_context,
