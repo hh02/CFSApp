@@ -164,12 +164,13 @@ namespace CFSUI::Canvas {
             // mouse status
             const bool is_mouse_left_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left) && is_hovered;
             const bool is_mouse_left_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left) && is_hovered;
-            const bool is_mouse_left_double_clicked = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && is_hovered;
-            const bool is_mouse_right_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Right) && is_hovered;
+            const bool is_mouse_right_released = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
+            const bool is_mouse_right_dragging = ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
             const bool is_mouse_scrolled = (io.MouseWheel != 0);
 
             static ImVec2 mouse_moved_distance;
+            static bool mouse_right_dragged = false;
 
 
             if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
@@ -218,6 +219,7 @@ namespace CFSUI::Canvas {
 
             // state
             static auto Normal_s = sml::state<class Normal>;
+            static auto Dragging_s = sml::state<class Dragging>;
             static auto Inserting_s = sml::state<class Inserting>;
             static auto Moving_s = sml::state<class Moving>;
 
@@ -227,7 +229,8 @@ namespace CFSUI::Canvas {
             struct mouse_scrolled {};
             struct mouse_left_clicked {};
             struct mouse_left_released {};
-            struct mouse_right_clicked {};
+            struct mouse_right_released {};
+            struct mouse_right_dragging {};
 
             // guard
             static auto is_last_path_closed = [] {
@@ -258,6 +261,9 @@ namespace CFSUI::Canvas {
             static auto is_open_point = [] {
                 return hovered_type == ObjectType::PathPoint && (!paths[hovered_path_idx].is_closed)
                        && (hovered_point_idx == paths[hovered_path_idx].points.size() - 3);
+            };
+            static auto is_mouse_right_dragged = [] {
+                return mouse_right_dragged;
             };
 
 
@@ -550,6 +556,14 @@ namespace CFSUI::Canvas {
             };
 
 
+            static auto set_dragging_context = [] {
+                mouse_right_dragged = false;
+            };
+            static auto update_dragging_context = [] {
+                if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+                    mouse_right_dragged = true;
+                }
+            };
             // set moving context (moving points, mouse moved distance)
             static auto set_moving_context = [] {
                 // mouse moved distance
@@ -752,8 +766,10 @@ namespace CFSUI::Canvas {
                             Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
                             Normal_s + event<mouse_left_clicked> [is_blank] / unselect,
                             Normal_s + event<mouse_left_clicked> [!is_blank] / (update_selected, set_moving_context) = Moving_s,
-                            Normal_s + event<mouse_right_clicked> [is_image] / (update_selected, show_image_popup),
-                            Normal_s + event<mouse_right_clicked> [is_path] / (update_selected, show_path_popup),
+                            Normal_s + event<mouse_right_dragging> = Dragging_s,
+                            Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
+                            Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
+                            Dragging_s + event<mouse_right_released> = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [is_inserting_first] / new_node,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && !is_start_point] = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
@@ -782,8 +798,11 @@ namespace CFSUI::Canvas {
             if (is_mouse_left_released) {
                 state_machine.process_event(mouse_left_released{});
             }
-            if (is_mouse_right_clicked) {
-                state_machine.process_event(mouse_right_clicked{});
+            if (is_mouse_right_dragging) {
+                state_machine.process_event(mouse_right_dragging{});
+            }
+            if (is_mouse_right_released) {
+                state_machine.process_event(mouse_right_released{});
             }
 
 /*
