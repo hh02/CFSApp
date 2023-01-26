@@ -321,13 +321,13 @@ namespace CFSUI::Canvas {
                         if (std::fabs(xa - 0.f) > 0.001) {
                             float t = (-xb + std::sqrt(xb*xb - 4.f*xa*xc)) / (2.f*xa);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].x*std::pow(1.f-t, 3) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2) + 3.f*points[i+2].x*std::pow(t, 2)*(1.f-t) + points[i+3].x * std::pow(t, 3);
+                                const float val = points[i].x*std::pow(1.f-t, 3.f) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2.f) + 3.f*points[i+2].x*std::pow(t, 2.f)*(1.f-t) + points[i+3].x * std::pow(t, 3.f);
                                 p_min.x = std::min(p_min.x, val);
                                 p_max.x = std::max(p_max.x, val);
                             }
                             t = (-xb - std::sqrt(xb*xb - 4.f*xa*xc)) / (2.f*xa);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].x*std::pow(1.f-t, 3) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2) + 3.f*points[i+2].x*std::pow(t, 2)*(1.f-t) + points[i+3].x * std::pow(t, 3);
+                                const float val = points[i].x*std::pow(1.f-t, 3.f) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2.f) + 3.f*points[i+2].x*std::pow(t, 2.f)*(1.f-t) + points[i+3].x * std::pow(t, 3.f);
                                 p_min.x = std::min(p_min.x, val);
                                 p_max.x = std::max(p_max.x, val);
                             }
@@ -338,13 +338,13 @@ namespace CFSUI::Canvas {
                         if (std::fabs(ya - 0.f) > 0.001) {
                             float t = (-yb + std::sqrt(yb*yb - 4.f*ya*yc)) / (2.f*ya);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].y*std::pow(1.f-t, 3) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2) + 3.f*points[i+2].y*std::pow(t, 2)*(1.f-t) + points[i+3].y * std::pow(t, 3);
+                                const float val = points[i].y*std::pow(1.f-t, 3.f) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2.f) + 3.f*points[i+2].y*std::pow(t, 2.f)*(1.f-t) + points[i+3].y * std::pow(t, 3.f);
                                 p_min.y = std::min(p_min.y, val);
                                 p_max.y = std::max(p_max.y, val);
                             }
                             t = (-yb - std::sqrt(yb*yb - 4.f*ya*yc)) / (2.f*ya);
                             if (0.f < t && t < 1.f) {
-                                const float val = points[i].y*std::pow(1.f-t, 3) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2) + 3.f*points[i+2].y*std::pow(t, 2)*(1.f-t) + points[i+3].y * std::pow(t, 3);
+                                const float val = points[i].y*std::pow(1.f-t, 3.f) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2.f) + 3.f*points[i+2].y*std::pow(t, 2.f)*(1.f-t) + points[i+3].y * std::pow(t, 3.f);
                                 p_min.y = std::min(p_min.y, val);
                                 p_max.y = std::max(p_max.y, val);
                             }
@@ -812,7 +812,7 @@ namespace CFSUI::Canvas {
             // TODO: better name
             if (ImGui::BeginPopup("path_popup")) {
                 if (ImGui::Selectable("delete")) {
-                    paths.erase(paths.begin() + selected_path_idx);
+                    paths.erase(paths.begin() + static_cast<long long>(selected_path_idx));
                     selected_type = ObjectType::None;
                     hovered_type = ObjectType::None;
                 }
@@ -840,7 +840,7 @@ namespace CFSUI::Canvas {
 
                 }
                 if (ImGui::Selectable("delete")) {
-                    images.erase(images.begin() + selected_image_idx);
+                    images.erase(images.begin() + static_cast<long long>(selected_image_idx));
                     selected_type = ObjectType::None;
                     hovered_type = ObjectType::None;
                 }
