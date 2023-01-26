@@ -163,7 +163,7 @@ namespace CFSUI::Canvas {
             // mouse status
             const bool is_mouse_left_clicked = is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             const bool is_mouse_left_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-            const bool is_mouse_left_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.5f);
+            const bool is_mouse_left_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.1f);
             const bool is_mouse_right_released = is_hovered &&  ImGui::IsMouseReleased(ImGuiMouseButton_Right);
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
@@ -181,7 +181,7 @@ namespace CFSUI::Canvas {
             static float handle_thickness = 2.0f;
             static float bounding_thickness = 2.0f;
             // TODO: use better name
-            static float point_threshold = 6.0f; // distance point_threshold for hovering
+            static float point_threshold = 8.0f; // distance point_threshold for hovering
             static float line_threshold = 4.0f;
 
             // hover and select----------------------
