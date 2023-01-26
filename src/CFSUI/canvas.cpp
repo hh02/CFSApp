@@ -536,6 +536,7 @@ namespace CFSUI::Canvas {
 
                 // image
                 for (int i = static_cast<int>(images.size()) - 1; i >= 0; i--) {
+                    if (images[i].locked) continue;
                     if ((images[i].p_min.x <= mouse_pos_in_canvas.x && mouse_pos_in_canvas.x <= images[i].p_max.x)
                     && (images[i].p_min.y <= mouse_pos_in_canvas.y && mouse_pos_in_canvas.y <= images[i].p_max.y)) {
                         hovered_type = ObjectType::Image;
@@ -590,9 +591,10 @@ namespace CFSUI::Canvas {
             // points and moved distance
             static auto update_moving_context = [&io, &mouse_pos_in_canvas] {
                 for (const auto point_ptr : moving_points_ptr) {
-                    (*point_ptr).x += io.MouseDelta.x;
-                    (*point_ptr).y += io.MouseDelta.y;
+                    (*point_ptr).x += io.MouseDelta.x / scaling;
+                    (*point_ptr).y += io.MouseDelta.y / scaling;
                 }
+
                 if (selected_type == ObjectType::Path) {
                     auto& path = paths[selected_path_idx];
                     if (hovered_type == ObjectType::PathTop) {
