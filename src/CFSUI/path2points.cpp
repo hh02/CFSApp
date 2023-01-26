@@ -44,7 +44,7 @@ namespace CFSUI {
             const float k2 = h / speed(t + k1/2.f);
             const float k3 = h / speed(t + k2/2.f);
             const float k4 = h / speed(t + k3);
-            t += (k1 + 2.f * (k2 + k3) + k4);
+            t += (k1 + 2.f * (k2 + k3) + k4) / 6.f;
         }
         return t;
     }
