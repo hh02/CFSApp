@@ -13,7 +13,6 @@
 
 namespace CFSUI::Canvas {
     // dragged eps
-    const float dragged_eps = 2.0f;
     const float collinear_eps = 0.1f;
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
         return std::hypot(a.x - b.x, a.y - b.y);
@@ -162,22 +161,13 @@ namespace CFSUI::Canvas {
 
 
             // mouse status
-            const bool is_mouse_left_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left) && is_hovered;
-            const bool is_mouse_left_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left) && is_hovered;
-            const bool is_mouse_right_released = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
-            const bool is_mouse_right_dragging = ImGui::IsMouseDragging(ImGuiMouseButton_Right);
+            const bool is_mouse_left_clicked = is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+            const bool is_mouse_left_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+            const bool is_mouse_left_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.f);
+            const bool is_mouse_right_released = is_hovered &&  ImGui::IsMouseReleased(ImGuiMouseButton_Right);
+            const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
             const bool is_mouse_scrolled = (io.MouseWheel != 0);
-
-            static ImVec2 mouse_moved_distance;
-            static bool mouse_right_dragged = false;
-
-
-            if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-                translate.x += io.MouseDelta.x;
-                translate.y += io.MouseDelta.y;
-            }
-
             const ImVec2 mouse_pos_in_canvas((io.MousePos.x-translate.x)/scaling, (io.MousePos.y-translate.y) / scaling);
 
             // set properties
@@ -229,18 +219,13 @@ namespace CFSUI::Canvas {
             struct mouse_scrolled {};
             struct mouse_left_clicked {};
             struct mouse_left_released {};
+            struct mouse_left_dragging {};
             struct mouse_right_released {};
             struct mouse_right_dragging {};
 
             // guard
             static auto is_last_path_closed = [] {
                 return paths.empty() || paths.back().is_closed;
-            };
-            static auto is_blank = [] {
-                return hovered_type == ObjectType::None;
-            };
-            static auto is_path_point = [] {
-                return hovered_type == ObjectType::PathPoint;
             };
             static auto is_image = [] {
                 return hovered_type == ObjectType::Image;
@@ -255,15 +240,9 @@ namespace CFSUI::Canvas {
             static auto is_inserting_first = [] {
                 return paths[selected_path_idx].points.size() == 3;
             };
-            static auto is_dragged = []{
-                return std::hypot(mouse_moved_distance.x, mouse_moved_distance.y) > dragged_eps;
-            };
             static auto is_open_point = [] {
                 return hovered_type == ObjectType::PathPoint && (!paths[hovered_path_idx].is_closed)
                        && (hovered_point_idx == paths[hovered_path_idx].points.size() - 3);
-            };
-            static auto is_mouse_right_dragged = [] {
-                return mouse_right_dragged;
             };
 
 
@@ -392,6 +371,9 @@ namespace CFSUI::Canvas {
                     selected_type = hovered_type;
                     selected_image_idx = hovered_image_idx;
                 }
+                else if (hovered_type == ObjectType::None){
+                    selected_type = hovered_type;
+                }
 
             };
             static auto new_node = []{
@@ -413,9 +395,6 @@ namespace CFSUI::Canvas {
                 hovered_type = ObjectType::PathPoint;
                 hovered_point_idx = 0;
                 update_selected();
-            };
-            static auto unselect = [] {
-                selected_type = ObjectType::None;
             };
             static auto update_hovered = [&mouse_pos_in_canvas] {
                 float min_dis = std::numeric_limits<float>::max();
@@ -555,20 +534,8 @@ namespace CFSUI::Canvas {
                 hovered_type = ObjectType::None;
             };
 
-
-            static auto set_dragging_context = [] {
-                mouse_right_dragged = false;
-            };
-            static auto update_dragging_context = [] {
-                if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-                    mouse_right_dragged = true;
-                }
-            };
             // set moving context (moving points, mouse moved distance)
             static auto set_moving_context = [] {
-                // mouse moved distance
-                mouse_moved_distance = ImVec2(0.0f, 0.0f);
-
                 // moving points
                 // clear vector
                 std::vector<ImVec2*>().swap(moving_points_ptr);
@@ -739,8 +706,6 @@ namespace CFSUI::Canvas {
                         image.p_max.y = image.p_min.y + ratio * (image.p_max.y - image.p_min.y);
                     }
                 }
-                mouse_moved_distance.x += std::fabs(io.MouseDelta.x);
-                mouse_moved_distance.y += std::fabs(io.MouseDelta.y);
             };
             static auto show_path_popup = [] {
                 ImGui::OpenPopup("path_popup");
@@ -754,6 +719,10 @@ namespace CFSUI::Canvas {
                 translate.x = translate.x * c + (1.0f - c) * io.MousePos.x;
                 translate.y = translate.y * c + (1.0f - c) * io.MousePos.y;
             };
+            static auto update_translate = [&io] {
+                translate.x += io.MouseDelta.x;
+                translate.y += io.MouseDelta.y;
+            };
 
 
             class TransitionTable {
@@ -764,19 +733,20 @@ namespace CFSUI::Canvas {
                             * Normal_s + event<mouse_moved> / update_hovered,
                             Normal_s + event<mouse_scrolled> / zoom,
                             Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
-                            Normal_s + event<mouse_left_clicked> [is_blank] / unselect,
-                            Normal_s + event<mouse_left_clicked> [!is_blank] / (update_selected, set_moving_context) = Moving_s,
+                            Normal_s + event<mouse_left_clicked> [is_open_point] / new_node = Inserting_s,
+                            Normal_s + event<mouse_left_clicked> [!is_open_point] / update_selected,
+                            Normal_s + event<mouse_left_dragging> / set_moving_context = Moving_s,
                             Normal_s + event<mouse_right_dragging> = Dragging_s,
                             Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
                             Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
                             Dragging_s + event<mouse_right_released> = Normal_s,
+                            Dragging_s + event<mouse_moved> / update_translate,
                             Inserting_s + event<mouse_left_clicked> [is_inserting_first] / new_node,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && !is_start_point] = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
                             Inserting_s + event<mouse_moved> / update_inserting_points_pos,
-                            Moving_s + event<mouse_left_released> [!is_dragged && is_open_point] / new_node = Inserting_s,
-                            Moving_s + event<mouse_left_released> [is_dragged  || !is_open_point] = Normal_s,
-                            Moving_s + event<mouse_moved> / update_moving_context
+                            Moving_s + event<mouse_moved> / update_moving_context,
+                            Moving_s + event<mouse_left_released> = Normal_s
                     );
                 }
             };
@@ -791,12 +761,14 @@ namespace CFSUI::Canvas {
             if (is_mouse_scrolled) {
                 state_machine.process_event(mouse_scrolled{});
             }
-
             if (is_mouse_left_clicked) {
                 state_machine.process_event(mouse_left_clicked{});
             }
             if (is_mouse_left_released) {
                 state_machine.process_event(mouse_left_released{});
+            }
+            if (is_mouse_left_dragging) {
+                state_machine.process_event(mouse_left_dragging{});
             }
             if (is_mouse_right_dragging) {
                 state_machine.process_event(mouse_right_dragging{});
