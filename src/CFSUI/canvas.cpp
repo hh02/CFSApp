@@ -872,33 +872,32 @@ namespace CFSUI::Canvas {
 
 
             // 2.1 draw normal curves
+            // bezier curves
             for (const auto& path : paths) {
                 const auto& points = path.points;
+                if (points.empty()) continue;
+                draw_list->PathLineTo(transform(points[0]));
                 const auto siz = points.size();
-                for (size_t i = 0; i + 3 < siz; i += 3) {
-                    draw_list->AddBezierCubic(transform(points[i]), transform(points[i+1]),
-                                              transform(points[i+2]), transform(points[i+3]),
-                                              normal_color, curve_thickness);
+                for (size_t i = 0; i+3 < siz; i += 3) {
+                    draw_list->PathBezierCubicCurveTo(transform(points[i+1]), transform(points[i+2]), transform(points[i+3]));
                 }
                 if (path.is_closed) {
-                    draw_list->AddBezierCubic(transform(points[siz-3]), transform(points[siz-2]),
-                                              transform(points[siz-1]), transform(points[0]),
-                                              normal_color, curve_thickness);
+                    draw_list->PathBezierCubicCurveTo(transform(points[siz-2]), transform(points[siz-1]), transform(points[0]));
                 }
+                draw_list->PathStroke(normal_color, 0, curve_thickness);
             }
+
             if (hovered_type == ObjectType::Path){
                 const auto& points = paths[hovered_path_idx].points;
+                draw_list->PathLineTo(transform(points[0]));
                 const auto siz = points.size();
                 for (size_t i = 0; i + 3 < siz; i += 3) {
-                    draw_list->AddBezierCubic(transform(points[i]), transform(points[i+1]),
-                                              transform(points[i+2]), transform(points[i+3]),
-                                              hovered_color, curve_thickness);
+                    draw_list->PathBezierCubicCurveTo(transform(points[i+1]), transform(points[i+2]), transform(points[i+3]));
                 }
                 if (paths[hovered_path_idx].is_closed) {
-                    draw_list->AddBezierCubic(transform(points[siz-3]), transform(points[siz-2]),
-                                              transform(points[siz-1]), transform(points[0]),
-                                              hovered_color, curve_thickness);
+                    draw_list->PathBezierCubicCurveTo(transform(points[siz-2]), transform(points[siz-1]), transform(points[0]));
                 }
+                draw_list->PathStroke(hovered_color, 0, curve_thickness);
             }
             // 2.2 draw selected curves and ctrl handle
             if (selected_type == ObjectType::PathPoint && !preview_mode) {
