@@ -168,7 +168,7 @@ namespace CFSUI::Canvas {
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
             const bool is_mouse_scrolled = is_hovered && (io.MouseWheel != 0);
-            const ImVec2 mouse_pos_in_canvas((io.MousePos.x-translate.x)/scaling, (io.MousePos.y-translate.y) / scaling);
+            const ImVec2 mouse_pos((io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling);
 
             // set properties
             static float point_radius = 4.0f;
@@ -253,16 +253,16 @@ namespace CFSUI::Canvas {
                 selected_path_idx = paths.size() - 1;
             };
 
-            static auto update_inserting_points_pos = [&mouse_pos_in_canvas] {
+            static auto update_inserting_points_pos = [&mouse_pos] {
                 auto& points = paths[selected_path_idx].points;
-                points[selected_point_idx] = mouse_pos_in_canvas;
+                points[selected_point_idx] = mouse_pos;
 
                 draw_big_start_point = (points.size() > 3)
                         && (L2Distance(points[selected_point_idx], points[0]) < point_threshold);
 
                 if (selected_point_idx == 0) {
-                    points[1] = mouse_pos_in_canvas;
-                    points[2] = mouse_pos_in_canvas;
+                    points[1] = mouse_pos;
+                    points[2] = mouse_pos;
                     return;
                 }
 
@@ -396,7 +396,7 @@ namespace CFSUI::Canvas {
                 hovered_point_idx = 0;
                 update_selected();
             };
-            static auto update_hovered = [&mouse_pos_in_canvas] {
+            static auto update_hovered = [&mouse_pos] {
                 float min_dis = std::numeric_limits<float>::max();
 
                 auto updateMin = [&min_dis](float dis, ObjectType type, size_t path_idx, size_t point_idx) {
@@ -413,12 +413,12 @@ namespace CFSUI::Canvas {
                     if (selected_type == ObjectType::PathPoint) {
                         const auto& points = paths[selected_path_idx].points;
                         if (has_prev) {
-                            updateMin(L2Distance(points[prev_p1_idx], mouse_pos_in_canvas), ObjectType::CtrlPoint, selected_path_idx, prev_p1_idx);
-                            updateMin(L2Distance(points[prev_p2_idx], mouse_pos_in_canvas), ObjectType::CtrlPoint, selected_path_idx, prev_p2_idx);
+                            updateMin(L2Distance(points[prev_p1_idx], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, prev_p1_idx);
+                            updateMin(L2Distance(points[prev_p2_idx], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, prev_p2_idx);
                         }
                         if (has_next) {
-                            updateMin(L2Distance(points[selected_point_idx+1], mouse_pos_in_canvas), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx+1);
-                            updateMin(L2Distance(points[selected_point_idx+2], mouse_pos_in_canvas), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx+2);
+                            updateMin(L2Distance(points[selected_point_idx+1], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx + 1);
+                            updateMin(L2Distance(points[selected_point_idx+2], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx + 2);
                         }
                     }
                     // path point
@@ -426,7 +426,7 @@ namespace CFSUI::Canvas {
                         if (selected_type == ObjectType::Path && selected_path_idx == i) continue;
                         const auto& points = paths[i].points;
                         for (size_t j = 0; j < points.size(); j += 3) {
-                            updateMin(L2Distance(points[j], mouse_pos_in_canvas), ObjectType::PathPoint, i, j);
+                            updateMin(L2Distance(points[j], mouse_pos), ObjectType::PathPoint, i, j);
                         }
                     }
                     if (min_dis < point_threshold) return;
@@ -437,10 +437,10 @@ namespace CFSUI::Canvas {
                 min_dis = std::numeric_limits<float>::max();
                 if (selected_type == ObjectType::Path) {
                     const auto& path = paths[selected_path_idx];
-                    updateMin(L2Distance(path.p_min, mouse_pos_in_canvas), ObjectType::PathTopLeft, 0, 0);
-                    updateMin(L2Distance(path.p_max, mouse_pos_in_canvas), ObjectType::PathBottomRight, 0, 0);
-                    updateMin(L2Distance({path.p_max.x, path.p_min.y}, mouse_pos_in_canvas), ObjectType::PathTopRight, 0, 0);
-                    updateMin(L2Distance({path.p_min.x, path.p_max.y}, mouse_pos_in_canvas), ObjectType::PathBottomLeft, 0, 0);
+                    updateMin(L2Distance(path.p_min, mouse_pos), ObjectType::PathTopLeft, 0, 0);
+                    updateMin(L2Distance(path.p_max, mouse_pos), ObjectType::PathBottomRight, 0, 0);
+                    updateMin(L2Distance({path.p_max.x, path.p_min.y}, mouse_pos), ObjectType::PathTopRight, 0, 0);
+                    updateMin(L2Distance({path.p_min.x, path.p_max.y}, mouse_pos), ObjectType::PathBottomLeft, 0, 0);
                 }
                 if (min_dis < point_threshold) return;
 
@@ -448,13 +448,13 @@ namespace CFSUI::Canvas {
                 min_dis = std::numeric_limits<float>::max();
                 if (selected_type == ObjectType::Path) {
                     const auto& path = paths[selected_path_idx];
-                    if (path.p_min.x < mouse_pos_in_canvas.x && mouse_pos_in_canvas.x < path.p_max.x) {
-                        updateMin(std::fabs(mouse_pos_in_canvas.y-path.p_min.y), ObjectType::PathTop, 0, 0);
-                        updateMin(std::fabs(mouse_pos_in_canvas.y-path.p_max.y), ObjectType::PathBottom, 0, 0);
+                    if (path.p_min.x < mouse_pos.x && mouse_pos.x < path.p_max.x) {
+                        updateMin(std::fabs(mouse_pos.y - path.p_min.y), ObjectType::PathTop, 0, 0);
+                        updateMin(std::fabs(mouse_pos.y - path.p_max.y), ObjectType::PathBottom, 0, 0);
                     }
-                    if (path.p_min.y < mouse_pos_in_canvas.y && mouse_pos_in_canvas.y < path.p_max.y) {
-                        updateMin(std::fabs(mouse_pos_in_canvas.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
-                        updateMin(std::fabs(mouse_pos_in_canvas.x - path.p_max.x), ObjectType::PathRight, 0, 0);
+                    if (path.p_min.y < mouse_pos.y && mouse_pos.y < path.p_max.y) {
+                        updateMin(std::fabs(mouse_pos.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
+                        updateMin(std::fabs(mouse_pos.x - path.p_max.x), ObjectType::PathRight, 0, 0);
                     }
                 }
                 if (min_dis < line_threshold) return;
@@ -464,10 +464,10 @@ namespace CFSUI::Canvas {
                 min_dis = std::numeric_limits<float>::max();
                 if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
-                    updateMin(L2Distance(image.p_min, mouse_pos_in_canvas), ObjectType::ImageTopLeft, 0, 0);
-                    updateMin(L2Distance(image.p_max, mouse_pos_in_canvas), ObjectType::ImageBottomRight, 0, 0);
-                    updateMin(L2Distance({image.p_max.x, image.p_min.y}, mouse_pos_in_canvas), ObjectType::ImageTopRight, 0, 0);
-                    updateMin(L2Distance({image.p_min.x, image.p_max.y}, mouse_pos_in_canvas), ObjectType::ImageBottomLeft, 0, 0);
+                    updateMin(L2Distance(image.p_min, mouse_pos), ObjectType::ImageTopLeft, 0, 0);
+                    updateMin(L2Distance(image.p_max, mouse_pos), ObjectType::ImageBottomRight, 0, 0);
+                    updateMin(L2Distance({image.p_max.x, image.p_min.y}, mouse_pos), ObjectType::ImageTopRight, 0, 0);
+                    updateMin(L2Distance({image.p_min.x, image.p_max.y}, mouse_pos), ObjectType::ImageBottomLeft, 0, 0);
                 }
                 if (min_dis < point_threshold) return;
 
@@ -475,13 +475,13 @@ namespace CFSUI::Canvas {
                 min_dis = std::numeric_limits<float>::max();
                 if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
                     const auto& image = images[selected_image_idx];
-                    if (image.p_min.x < mouse_pos_in_canvas.x && mouse_pos_in_canvas.x < image.p_max.x) {
-                        updateMin(std::fabs(mouse_pos_in_canvas.y-image.p_min.y), ObjectType::ImageTop, 0, 0);
-                        updateMin(std::fabs(mouse_pos_in_canvas.y-image.p_max.y), ObjectType::ImageBottom, 0, 0);
+                    if (image.p_min.x < mouse_pos.x && mouse_pos.x < image.p_max.x) {
+                        updateMin(std::fabs(mouse_pos.y - image.p_min.y), ObjectType::ImageTop, 0, 0);
+                        updateMin(std::fabs(mouse_pos.y - image.p_max.y), ObjectType::ImageBottom, 0, 0);
                     }
-                    if (image.p_min.y < mouse_pos_in_canvas.y && mouse_pos_in_canvas.y < image.p_max.y) {
-                        updateMin(std::fabs(mouse_pos_in_canvas.x-image.p_min.x), ObjectType::ImageLeft, 0, 0);
-                        updateMin(std::fabs(mouse_pos_in_canvas.x-image.p_max.x), ObjectType::ImageRight, 0, 0);
+                    if (image.p_min.y < mouse_pos.y && mouse_pos.y < image.p_max.y) {
+                        updateMin(std::fabs(mouse_pos.x - image.p_min.x), ObjectType::ImageLeft, 0, 0);
+                        updateMin(std::fabs(mouse_pos.x - image.p_max.x), ObjectType::ImageRight, 0, 0);
                     }
                 }
                 if (min_dis < line_threshold) return;
@@ -499,8 +499,8 @@ namespace CFSUI::Canvas {
                     }
 
                     CubicSplineTest::CubicBezierPath bezier_path(&points[0], (int)points.size());
-                    auto solution = bezier_path.ClosestPointToPath({mouse_pos_in_canvas.x, mouse_pos_in_canvas.y, 0.0f}, &solver);
-                    updateMin(L2Distance({solution.x, solution.y}, mouse_pos_in_canvas), ObjectType::Path, i, 0);
+                    auto solution = bezier_path.ClosestPointToPath({mouse_pos.x, mouse_pos.y, 0.0f}, &solver);
+                    updateMin(L2Distance({solution.x, solution.y}, mouse_pos), ObjectType::Path, i, 0);
 
                     // handle collinear
                     for (size_t j = 0; j + 3 < points.size(); j += 3) {
@@ -508,12 +508,16 @@ namespace CFSUI::Canvas {
                         const float p1x = points[j+1].x, p1y = points[j+1].y;
                         const float p2x = points[j+2].x, p2y = points[j+2].y;
                         const float p3x = points[j+3].x, p3y = points[j+3].y;
-                        const float px = mouse_pos_in_canvas.x, py = mouse_pos_in_canvas.y;
+                        const float px = mouse_pos.x, py = mouse_pos.y;
                         // collinear
                         if (std::fabs((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
                             && std::fabs((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
-                            const float val = std::fabs((p3y - p0y) * px - (p3x - p0x) * py + p3x*p0y - p0x*p3y);
-                            updateMin(val/std::hypot(p3y-p0y, p3x-p0x), ObjectType::Path, i, 0);
+                            float cross = (p3x - p0x) * (px - p0x) + (p3y - p0y) * (py - p0y);
+                            if (cross < 0) continue;
+                            float d2 = (p3x - p0x) * (p3x - p0x) + (p3y - p0y) * (p3y - p0y);
+                            if (cross > d2) continue;
+                            float r = cross / d2;
+                            updateMin(std::hypot(p0x+(p3x-p0x)*r-px, p0y+(p3y-p0y)*r-py), ObjectType::Path, i, 0);
                         }
                     }
                 }
@@ -522,8 +526,8 @@ namespace CFSUI::Canvas {
                 // image
                 for (int i = static_cast<int>(images.size()) - 1; i >= 0; i--) {
                     if (images[i].locked) continue;
-                    if ((images[i].p_min.x <= mouse_pos_in_canvas.x && mouse_pos_in_canvas.x <= images[i].p_max.x)
-                    && (images[i].p_min.y <= mouse_pos_in_canvas.y && mouse_pos_in_canvas.y <= images[i].p_max.y)) {
+                    if ((images[i].p_min.x <= mouse_pos.x && mouse_pos.x <= images[i].p_max.x)
+                    && (images[i].p_min.y <= mouse_pos.y && mouse_pos.y <= images[i].p_max.y)) {
                         hovered_type = ObjectType::Image;
                         hovered_image_idx = i;
                         return;
@@ -570,7 +574,7 @@ namespace CFSUI::Canvas {
             };
 
             // points and moved distance
-            static auto update_moving_context = [&io, &mouse_pos_in_canvas] {
+            static auto update_moving_context = [&io, &mouse_pos] {
                 for (const auto point_ptr : moving_points_ptr) {
                     (*point_ptr).x += io.MouseDelta.x / scaling;
                     (*point_ptr).y += io.MouseDelta.y / scaling;
@@ -580,33 +584,33 @@ namespace CFSUI::Canvas {
                     auto& path = paths[selected_path_idx];
                     if (hovered_type == ObjectType::PathTop) {
                         const auto p_max_y = path.p_max.y;
-                        const auto ratio = (p_max_y - mouse_pos_in_canvas.y)  / (p_max_y - path.p_min.y);
-                        path.p_min.y = mouse_pos_in_canvas.y;
+                        const auto ratio = (p_max_y - mouse_pos.y) / (p_max_y - path.p_min.y);
+                        path.p_min.y = mouse_pos.y;
                         for (auto& point : path.points) {
                             point.y = p_max_y - ratio * (p_max_y - point.y);
                         }
                     }
                     else if (hovered_type == ObjectType::PathBottom) {
                         const auto p_min_y = path.p_min.y;
-                        const auto ratio = (mouse_pos_in_canvas.y - p_min_y) / (path.p_max.y - p_min_y);
-                        path.p_max.y = mouse_pos_in_canvas.y;
+                        const auto ratio = (mouse_pos.y - p_min_y) / (path.p_max.y - p_min_y);
+                        path.p_max.y = mouse_pos.y;
                         for (auto& point : path.points) {
                             point.y = p_min_y + ratio * (point.y - p_min_y);
                         }
                     }
                     else if (hovered_type == ObjectType::PathLeft) {
                         const auto p_max_x = path.p_max.x;
-                        const auto ratio = (p_max_x - mouse_pos_in_canvas.x) / (path.p_max.x - path.p_min.x);
-                        path.p_min.x = mouse_pos_in_canvas.x;
+                        const auto ratio = (p_max_x - mouse_pos.x) / (path.p_max.x - path.p_min.x);
+                        path.p_min.x = mouse_pos.x;
                         for (auto& point : path.points) {
                             point.x = p_max_x - ratio * (p_max_x - point.x);
                         }
                     }
                     else if (hovered_type == ObjectType::PathRight) {
                         const auto p_min_x = path.p_min.x;
-                        const auto ratio = (mouse_pos_in_canvas.x - p_min_x) / (path.p_max.x - path.p_min.x);
+                        const auto ratio = (mouse_pos.x - p_min_x) / (path.p_max.x - path.p_min.x);
 
-                        path.p_max.x = mouse_pos_in_canvas.x;
+                        path.p_max.x = mouse_pos.x;
                         for (auto& point : path.points) {
                             point.x = p_min_x + ratio * (point.x - p_min_x);
                         }
@@ -615,8 +619,8 @@ namespace CFSUI::Canvas {
                     else if (hovered_type == ObjectType::PathTopLeft) {
                         const auto p_max_x = path.p_max.x;
                         const auto p_max_y = path.p_max.y;
-                        const auto ratio = std::max((p_max_x - mouse_pos_in_canvas.x) / (p_max_x - path.p_min.x),
-                                                    (p_max_y - mouse_pos_in_canvas.y) / (p_max_y - path.p_min.y));
+                        const auto ratio = std::max((p_max_x - mouse_pos.x) / (p_max_x - path.p_min.x),
+                                                    (p_max_y - mouse_pos.y) / (p_max_y - path.p_min.y));
 
                         path.p_min.x = p_max_x - ratio * (p_max_x - path.p_min.x);
                         path.p_min.y = p_max_y - ratio * (p_max_y - path.p_min.y);
@@ -628,8 +632,8 @@ namespace CFSUI::Canvas {
                     else if (hovered_type == ObjectType::PathTopRight) {
                         const auto p_min_x = path.p_min.x;
                         const auto p_max_y = path.p_max.y;
-                        const auto ratio = std::max((mouse_pos_in_canvas.x - p_min_x) / (path.p_max.x - p_min_x),
-                                                    (p_max_y - mouse_pos_in_canvas.y) / (p_max_y - path.p_min.y));
+                        const auto ratio = std::max((mouse_pos.x - p_min_x) / (path.p_max.x - p_min_x),
+                                                    (p_max_y - mouse_pos.y) / (p_max_y - path.p_min.y));
 
                         path.p_max.x = p_min_x + ratio * (path.p_max.x - p_min_x);
                         path.p_min.y = p_max_y - ratio * (p_max_y - path.p_min.y);
@@ -641,8 +645,8 @@ namespace CFSUI::Canvas {
                     else if (hovered_type == ObjectType::PathBottomLeft) {
                         const auto p_max_x = path.p_max.x;
                         const auto p_min_y = path.p_min.y;
-                        const auto ratio = std::max((p_max_x - mouse_pos_in_canvas.x) / (p_max_x - path.p_min.x),
-                                                    (mouse_pos_in_canvas.y - p_min_y) / (path.p_max.y - p_min_y));
+                        const auto ratio = std::max((p_max_x - mouse_pos.x) / (p_max_x - path.p_min.x),
+                                                    (mouse_pos.y - p_min_y) / (path.p_max.y - p_min_y));
 
                         path.p_min.x = p_max_x - ratio * (p_max_x - path.p_min.x);
                         path.p_max.y = p_min_y + ratio * (path.p_max.y - p_min_y);
@@ -654,8 +658,8 @@ namespace CFSUI::Canvas {
                     else if (hovered_type == ObjectType::PathBottomRight) {
                         const auto p_min_x = path.p_min.x;
                         const auto p_min_y = path.p_min.y;
-                        const auto ratio = std::max((mouse_pos_in_canvas.x - p_min_x) / (path.p_max.x - p_min_x),
-                                                    (mouse_pos_in_canvas.y - p_min_y) / (path.p_max.y - p_min_y));
+                        const auto ratio = std::max((mouse_pos.x - p_min_x) / (path.p_max.x - p_min_x),
+                                                    (mouse_pos.y - p_min_y) / (path.p_max.y - p_min_y));
 
                         path.p_max.x = p_min_x + ratio * (path.p_max.x - p_min_x);
                         path.p_max.y = p_min_y + ratio * (path.p_max.y - p_min_y);
@@ -670,38 +674,38 @@ namespace CFSUI::Canvas {
                 else if (selected_type == ObjectType::Image) {
                     auto& image = images[selected_image_idx];
                     if (hovered_type == ObjectType::ImageTop) {
-                        image.p_min.y = mouse_pos_in_canvas.y;
+                        image.p_min.y = mouse_pos.y;
                     }
                     else if (hovered_type == ObjectType::ImageBottom) {
-                        image.p_max.y = mouse_pos_in_canvas.y;
+                        image.p_max.y = mouse_pos.y;
                     }
                     else if (hovered_type == ObjectType::ImageLeft) {
-                        image.p_min.x = mouse_pos_in_canvas.x;
+                        image.p_min.x = mouse_pos.x;
                     }
                     else if (hovered_type == ObjectType::ImageRight) {
-                        image.p_max.x = mouse_pos_in_canvas.x;
+                        image.p_max.x = mouse_pos.x;
                     }
                     else if (hovered_type == ObjectType::ImageTopLeft) {
-                        const auto ratio = std::max((image.p_max.x - mouse_pos_in_canvas.x) / (image.p_max.x - image.p_min.x),
-                                                    (image.p_max.y - mouse_pos_in_canvas.y) / (image.p_max.y - image.p_min.y));
+                        const auto ratio = std::max((image.p_max.x - mouse_pos.x) / (image.p_max.x - image.p_min.x),
+                                                    (image.p_max.y - mouse_pos.y) / (image.p_max.y - image.p_min.y));
                         image.p_min.x = image.p_max.x - ratio * (image.p_max.x - image.p_min.x);
                         image.p_min.y = image.p_max.y - ratio * (image.p_max.y - image.p_min.y);
                     }
                     else if (hovered_type == ObjectType::ImageTopRight) {
-                        const auto ratio = std::max((mouse_pos_in_canvas.x - image.p_min.x) / (image.p_max.x - image.p_min.x),
-                                                    (image.p_max.y - mouse_pos_in_canvas.y) / (image.p_max.y - image.p_min.y));
+                        const auto ratio = std::max((mouse_pos.x - image.p_min.x) / (image.p_max.x - image.p_min.x),
+                                                    (image.p_max.y - mouse_pos.y) / (image.p_max.y - image.p_min.y));
                         image.p_max.x = image.p_min.x + ratio * (image.p_max.x - image.p_min.x);
                         image.p_min.y = image.p_max.y - ratio * (image.p_max.y - image.p_min.y);
                     }
                     else if (hovered_type == ObjectType::ImageBottomLeft) {
-                        const auto ratio = std::max((image.p_max.x - mouse_pos_in_canvas.x) / (image.p_max.x - image.p_min.x),
-                                                    (mouse_pos_in_canvas.y - image.p_min.y) / (image.p_max.y - image.p_min.y));
+                        const auto ratio = std::max((image.p_max.x - mouse_pos.x) / (image.p_max.x - image.p_min.x),
+                                                    (mouse_pos.y - image.p_min.y) / (image.p_max.y - image.p_min.y));
                         image.p_min.x = image.p_max.x - ratio * (image.p_max.x - image.p_min.x);
                         image.p_max.y = image.p_min.y + ratio * (image.p_max.y - image.p_min.y);
                     }
                     else if (hovered_type == ObjectType::ImageBottomRight) {
-                        const auto ratio = std::max((mouse_pos_in_canvas.x - image.p_min.x) / (image.p_max.x - image.p_min.x),
-                                                    (mouse_pos_in_canvas.y - image.p_min.y) / (image.p_max.y - image.p_min.y));
+                        const auto ratio = std::max((mouse_pos.x - image.p_min.x) / (image.p_max.x - image.p_min.x),
+                                                    (mouse_pos.y - image.p_min.y) / (image.p_max.y - image.p_min.y));
                         image.p_max.x = image.p_min.x + ratio * (image.p_max.x - image.p_min.x);
                         image.p_max.y = image.p_min.y + ratio * (image.p_max.y - image.p_min.y);
                     }
