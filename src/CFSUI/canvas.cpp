@@ -12,7 +12,6 @@
 
 
 namespace CFSUI::Canvas {
-    // dragged eps
     const float collinear_eps = 0.1f;
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
         return std::hypot(a.x - b.x, a.y - b.y);
@@ -163,7 +162,6 @@ namespace CFSUI::Canvas {
             // mouse status
             const bool is_mouse_left_clicked = is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             const bool is_mouse_left_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-            const bool is_mouse_left_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.1f);
             const bool is_mouse_right_released = is_hovered &&  ImGui::IsMouseReleased(ImGuiMouseButton_Right);
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
@@ -181,8 +179,8 @@ namespace CFSUI::Canvas {
             static float handle_thickness = 2.0f;
             static float bounding_thickness = 2.0f;
             // TODO: use better name
-            static float point_threshold = 8.0f; // distance point_threshold for hovering
-            static float line_threshold = 4.0f;
+            static const float point_threshold = 8.0f; // distance point_threshold for hovering
+            static const float line_threshold = 4.0f;
 
             // hover and select----------------------
             static ObjectType hovered_type = ObjectType::None;
@@ -202,6 +200,8 @@ namespace CFSUI::Canvas {
             static size_t next_p3_idx = 0;
 
             static std::vector<ImVec2*> moving_points_ptr;
+            static float moving_distance = 0.f;
+            static const float moving_threshold = 0.1f;
 
             static bool draw_big_start_point = false;
 
@@ -219,7 +219,6 @@ namespace CFSUI::Canvas {
             struct mouse_scrolled {};
             struct mouse_left_clicked {};
             struct mouse_left_released {};
-            struct mouse_left_dragging {};
             struct mouse_right_released {};
             struct mouse_right_dragging {};
 
@@ -239,6 +238,9 @@ namespace CFSUI::Canvas {
             };
             static auto is_inserting_first = [] {
                 return paths[selected_path_idx].points.size() == 3;
+            };
+            static auto is_moving_moved = [] {
+                return moving_distance > moving_threshold;
             };
             static auto is_open_point = [] {
                 return hovered_type == ObjectType::PathPoint && (!paths[hovered_path_idx].is_closed)
@@ -398,7 +400,6 @@ namespace CFSUI::Canvas {
             };
             static auto update_hovered = [&mouse_pos] {
                 float min_dis = std::numeric_limits<float>::max();
-
                 auto updateMin = [&min_dis](float dis, ObjectType type, size_t path_idx, size_t point_idx) {
                     if (dis < min_dis) {
                         min_dis = dis;
@@ -525,7 +526,6 @@ namespace CFSUI::Canvas {
 
                 // image
                 for (int i = static_cast<int>(images.size()) - 1; i >= 0; i--) {
-                    if (images[i].locked) continue;
                     if ((images[i].p_min.x <= mouse_pos.x && mouse_pos.x <= images[i].p_max.x)
                     && (images[i].p_min.y <= mouse_pos.y && mouse_pos.y <= images[i].p_max.y)) {
                         hovered_type = ObjectType::Image;
@@ -533,17 +533,15 @@ namespace CFSUI::Canvas {
                         return;
                     }
                 }
-
-
                 hovered_type = ObjectType::None;
             };
 
             // set moving context (moving points, mouse moved distance)
-            static auto set_moving_context = [] {
-                // moving points
+            static auto set_moving_context = [&io] {
+                moving_distance = 0.f;
                 // clear vector
                 std::vector<ImVec2*>().swap(moving_points_ptr);
-
+                if (hovered_type == ObjectType::None) return;
                 // move
                 if (hovered_type == ObjectType::CtrlPoint) {
                     moving_points_ptr.emplace_back(&paths[hovered_path_idx].points[hovered_point_idx]);
@@ -575,6 +573,8 @@ namespace CFSUI::Canvas {
 
             // points and moved distance
             static auto update_moving_context = [&io, &mouse_pos] {
+                moving_distance += std::hypot(io.MouseDelta.x, io.MouseDelta.y);
+
                 for (const auto point_ptr : moving_points_ptr) {
                     (*point_ptr).x += io.MouseDelta.x / scaling;
                     (*point_ptr).y += io.MouseDelta.y / scaling;
@@ -737,9 +737,7 @@ namespace CFSUI::Canvas {
                             * Normal_s + event<mouse_moved> / update_hovered,
                             Normal_s + event<mouse_scrolled> / zoom,
                             Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
-                            Normal_s + event<mouse_left_clicked> / update_selected,
-                            Normal_s + event<mouse_left_dragging> / set_moving_context = Moving_s,
-                            Normal_s + event<mouse_left_released> [is_open_point] / new_node = Inserting_s,
+                            Normal_s + event<mouse_left_clicked> / (set_moving_context, update_selected) = Moving_s,
                             Normal_s + event<mouse_right_dragging> = Dragging_s,
                             Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
                             Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
@@ -749,8 +747,9 @@ namespace CFSUI::Canvas {
                             Inserting_s + event<mouse_left_released> [!is_inserting_first && !is_start_point] = Normal_s,
                             Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
                             Inserting_s + event<mouse_moved> / update_inserting_points_pos,
-                            Moving_s + event<mouse_moved> / update_moving_context,
-                            Moving_s + event<mouse_left_released> = Normal_s
+                            Moving_s + event<mouse_left_released> [!is_moving_moved && is_open_point] / new_node = Inserting_s,
+                            Moving_s + event<mouse_left_released> [is_moving_moved || !is_open_point] = Normal_s,
+                            Moving_s + event<mouse_moved> / update_moving_context
                     );
                 }
             };
@@ -770,9 +769,6 @@ namespace CFSUI::Canvas {
             }
             if (is_mouse_left_released) {
                 state_machine.process_event(mouse_left_released{});
-            }
-            if (is_mouse_left_dragging) {
-                state_machine.process_event(mouse_left_dragging{});
             }
             if (is_mouse_right_dragging) {
                 state_machine.process_event(mouse_right_dragging{});
@@ -941,7 +937,7 @@ namespace CFSUI::Canvas {
 
             }
             // 2.5 draw hovered image's bounding box
-            if (hovered_type == ObjectType::Image && selected_type != ObjectType::Image) {
+            if (hovered_type == ObjectType::Image && !images[hovered_image_idx].locked && selected_type != ObjectType::Image) {
                 draw_list->AddRect(transform(images[hovered_image_idx].p_min),
                                    transform(images[hovered_image_idx].p_max),
                                    hovered_color, 0.0f, 0, 2.0f);
