@@ -10,7 +10,7 @@ namespace CFSUI {
         while (true) {
             auto t = getCurveParameter(s);
             if (t > 1.f || t < 0.f) break;
-            points.emplace_back(calc_x(t), calc_y(t));
+            points.emplace_back(getPoint(t));
             s += step;
         }
         points.emplace_back(p3);
@@ -23,17 +23,19 @@ namespace CFSUI {
         p2 = points[i+2];
         p3 = points[i+3];
     }
-    inline float Path2Points::calc_x(float t) const {
-        return p0.x*std::pow(1.f-t, 3.f) + 3.f*p1.x*t*std::pow(1.f-t, 2.f) + 3.f*p2.x*std::pow(t, 2.f)*(1.f-t) + p3.x * std::pow(t, 3.f);
-    }
 
-    inline float Path2Points::calc_y(float t) const {
-        return p0.y*std::pow(1.f-t, 3.f) + 3.f*p1.y*t*std::pow(1.f-t, 2.f) + 3.f*p2.y*std::pow(t, 2.f)*(1.f-t) + p3.y * std::pow(t, 3.f);
+    inline ImVec2 Path2Points::getPoint(float t) const {
+        const float s = 1.f - t;
+        return {
+                p0.x * s * s * s + 3.f*p1.x * s * s * t + 3.f*p2.x * s * t * t + p3.x * t * t * t,
+                p0.y * s * s * s + 3.f*p1.y * s * s * t + 3.f*p2.y * s * t * t + p3.y * t * t * t
+        };
+
     }
 
     inline float Path2Points::speed(float t) const {
-        auto dx = (-p0.x + 3.f*p1.x - 3.f*p2.x + p3.x) * t*t + 6.f*(p0.x - 2.f*p1.x + p2.x)*t + 3.f*(p1.x-p0.x);
-        auto dy = (-p0.y + 3.f*p1.y - 3.f*p2.y + p3.y) * t*t + 6.f*(p0.y - 2.f*p1.y + p2.y)*t + 3.f*(p1.y-p0.y);
+        auto dx = 3.f * (-p0.x + 3.f*p1.x - 3.f*p2.x + p3.x) * t*t + 6.f*(p0.x - 2.f*p1.x + p2.x)*t + 3.f*(p1.x-p0.x);
+        auto dy = 3.f * (-p0.y + 3.f*p1.y - 3.f*p2.y + p3.y) * t*t + 6.f*(p0.y - 2.f*p1.y + p2.y)*t + 3.f*(p1.y-p0.y);
         return std::hypot(dx, dy);
     }
 

@@ -1,7 +1,3 @@
-//
-// Created by huihao on 2023/1/26.
-//
-
 #ifndef CFSAPP_PATH2POINTS_H
 #define CFSAPP_PATH2POINTS_H
 
@@ -23,8 +19,7 @@ namespace CFSUI {
         int imax = 60;
         float step;
 
-        [[nodiscard]] float calc_x(float t) const;
-        [[nodiscard]] float calc_y(float t) const;
+        [[nodiscard]] ImVec2 getPoint(float t) const;
         [[nodiscard]] float speed(float t) const;
         [[nodiscard]] float getCurveParameter(float s) const;
     };
