@@ -833,10 +833,10 @@ namespace CFSUI::Canvas {
                             Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
                             Normal_s + event<mouse_right_released> [is_blank] / (update_selected, show_context_popup),
                             Normal_s + event<keyboard_undo> / undo,
-                            Normal_s + event<keyboard_redo> /redo,
-                            Normal_s + event<keyboard_cut> / cut,
+                            Normal_s + event<keyboard_redo> / redo,
+                            Normal_s + event<keyboard_cut> / (cut, update_history),
                             Normal_s + event<keyboard_copy> / copy,
-                            Normal_s + event<keyboard_paste> / paste,
+                            Normal_s + event<keyboard_paste> / (paste, update_history),
                             Dragging_s + event<mouse_right_released> = Normal_s,
                             Dragging_s + event<mouse_moved> / update_translate,
                             Inserting_s + event<mouse_left_released> [is_inserting_first] / new_node,
@@ -914,6 +914,7 @@ namespace CFSUI::Canvas {
             if (ImGui::BeginPopup("path_popup")) {
                 if (ImGui::Selectable("cut")) {
                     cut();
+                    update_history();
                 }
                 if (ImGui::Selectable("copy")) {
                     copy();
@@ -922,6 +923,7 @@ namespace CFSUI::Canvas {
                     paths.erase(paths.begin() + static_cast<long long>(selected_path_idx));
                     selected_type = ObjectType::None;
                     update_hovered();
+                    update_history();
                 }
                 ImGui::EndPopup();
             }
@@ -948,6 +950,7 @@ namespace CFSUI::Canvas {
                 }
                 if (ImGui::Selectable("cut")) {
                     cut();
+                    update_history();
                 }
                 if (ImGui::Selectable("copy")) {
                     copy();
@@ -956,6 +959,7 @@ namespace CFSUI::Canvas {
                     images.erase(images.begin() + static_cast<long long>(selected_image_idx));
                     selected_type = ObjectType::None;
                     update_hovered();
+                    update_history();
                 }
                 ImGui::EndPopup();
             }
@@ -981,6 +985,7 @@ namespace CFSUI::Canvas {
                         images.back().p_max.x += dx;
                         images.back().p_max.y += dy;
                     }
+                    update_history();
                 }
                 ImGui::EndPopup();
             }
