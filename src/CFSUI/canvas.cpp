@@ -62,6 +62,7 @@ namespace CFSUI::Canvas {
             static std::vector<Path> paths;
             static std::vector<Image> images;
             static History history(10);
+            static Clipboard clipboard;
             static CubicSplineTest::ClosestPointSolver solver;
             bool is_clicked_button = ImGui::Button("New path");
             ImGui::SameLine();
@@ -174,6 +175,9 @@ namespace CFSUI::Canvas {
             // keyboard status
             const bool is_keyboard_undo = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_Z]);
             const bool is_keyboard_redo = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_Y]);
+            const bool is_keyboard_cut = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_X]);
+            const bool is_keyboard_copy = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_C]);
+            const bool is_keyboard_paste = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V]);
 
             // set properties
             static float point_radius = 4.0f;
@@ -231,6 +235,9 @@ namespace CFSUI::Canvas {
 
             struct keyboard_undo {};
             struct keyboard_redo {};
+            struct keyboard_cut {};
+            struct keyboard_copy {};
+            struct keyboard_paste {};
 
             // guard
             static auto is_last_path_closed = [] {
@@ -241,6 +248,9 @@ namespace CFSUI::Canvas {
             };
             static auto is_path = [] {
                 return hovered_type == ObjectType::Path;
+            };
+            static auto is_blank = [] {
+                return hovered_type == ObjectType::None;
             };
             static auto is_start_point = []() {
                 size_t siz = paths[selected_path_idx].points.size();
@@ -727,6 +737,9 @@ namespace CFSUI::Canvas {
             static auto show_image_popup = [] {
                 ImGui::OpenPopup("image_popup");
             };
+            static auto show_context_popup = [] {
+                ImGui::OpenPopup("context_popup");
+            };
             static auto zoom = [&io] {
                 const float c = io.MouseWheel > 0 ? 1.05f : 0.95f;
                 scaling *= c;
@@ -741,15 +754,68 @@ namespace CFSUI::Canvas {
             static auto undo = [] {
                 history.undo(paths, images);
                 selected_type = ObjectType::None;
-                hovered_type = ObjectType::None;
+                update_hovered();
             };
             static auto redo = [] {
                 history.redo(paths, images);
                 selected_type = ObjectType::None;
-                hovered_type = ObjectType::None;
+                update_hovered();
             };
             static auto update_history = [] {
                 history.push_back(paths, images);
+            };
+            static auto cut = [] {
+                if (selected_type == ObjectType::None) {
+                    return;
+                }
+                if (selected_type == ObjectType::Path) {
+                    clipboard.objectType = selected_type;
+                    clipboard.path = paths[selected_path_idx];
+                    paths.erase(paths.begin() + (long long)selected_path_idx);
+                    selected_type = ObjectType::None;
+                    update_hovered();
+                    return;
+                }
+                if (selected_type == ObjectType::Image) {
+                    clipboard.objectType = selected_type;
+                    clipboard.image = images[selected_image_idx];
+                    images.erase(images.begin() + (long long)selected_image_idx);
+                    selected_type = ObjectType::None;
+                    update_hovered();
+                    return;
+                }
+            };
+            static auto copy = [] {
+                if (selected_type == ObjectType::None) {
+                    return;
+                }
+                if (selected_type == ObjectType::Path) {
+                    clipboard.objectType = selected_type;
+                    clipboard.path = paths[selected_path_idx];
+                    return;
+                }
+                if (selected_type == ObjectType::Image) {
+                    clipboard.objectType = selected_type;
+                    clipboard.image = images[selected_image_idx];
+                    return;
+                }
+            };
+            static auto paste = [] {
+                if (clipboard.objectType == ObjectType::None) {
+                    return;
+                }
+                if (clipboard.objectType == ObjectType::Path) {
+                    paths.emplace_back(clipboard.path);
+                    selected_type = clipboard.objectType;
+                    selected_path_idx = paths.size() - 1;
+                    return;
+                }
+                if (clipboard.objectType == ObjectType::Image) {
+                    images.emplace_back(clipboard.image);
+                    selected_type = clipboard.objectType;
+                    selected_image_idx = images.size()-1;
+                    return;
+                }
             };
 
 
@@ -765,8 +831,12 @@ namespace CFSUI::Canvas {
                             Normal_s + event<mouse_right_dragging> = Dragging_s,
                             Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
                             Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
+                            Normal_s + event<mouse_right_released> [is_blank] / (update_selected, show_context_popup),
                             Normal_s + event<keyboard_undo> / undo,
                             Normal_s + event<keyboard_redo> /redo,
+                            Normal_s + event<keyboard_cut> / cut,
+                            Normal_s + event<keyboard_copy> / copy,
+                            Normal_s + event<keyboard_paste> / paste,
                             Dragging_s + event<mouse_right_released> = Normal_s,
                             Dragging_s + event<mouse_moved> / update_translate,
                             Inserting_s + event<mouse_left_released> [is_inserting_first] / new_node,
@@ -809,6 +879,15 @@ namespace CFSUI::Canvas {
             if (is_keyboard_redo) {
                 state_machine.process_event(keyboard_redo{});
             }
+            if (is_keyboard_cut) {
+                state_machine.process_event(keyboard_cut{});
+            }
+            if (is_keyboard_copy) {
+                state_machine.process_event(keyboard_copy{});
+            }
+            if (is_keyboard_paste) {
+                state_machine.process_event(keyboard_paste{});
+            }
 
 
             if (hovered_type == ObjectType::PathTop || hovered_type == ObjectType::PathBottom
@@ -833,10 +912,16 @@ namespace CFSUI::Canvas {
 
             // TODO: better name
             if (ImGui::BeginPopup("path_popup")) {
+                if (ImGui::Selectable("cut")) {
+                    cut();
+                }
+                if (ImGui::Selectable("copy")) {
+                    copy();
+                }
                 if (ImGui::Selectable("delete")) {
                     paths.erase(paths.begin() + static_cast<long long>(selected_path_idx));
                     selected_type = ObjectType::None;
-                    hovered_type = ObjectType::None;
+                    update_hovered();
                 }
                 ImGui::EndPopup();
             }
@@ -861,10 +946,41 @@ namespace CFSUI::Canvas {
                     }
 
                 }
+                if (ImGui::Selectable("cut")) {
+                    cut();
+                }
+                if (ImGui::Selectable("copy")) {
+                    copy();
+                }
                 if (ImGui::Selectable("delete")) {
                     images.erase(images.begin() + static_cast<long long>(selected_image_idx));
                     selected_type = ObjectType::None;
-                    hovered_type = ObjectType::None;
+                    update_hovered();
+                }
+                ImGui::EndPopup();
+            }
+            if (ImGui::BeginPopup("context_popup")) {
+                if (ImGui::Selectable("new path")) {
+                    state_machine.process_event(clicked_button{});
+                }
+                if (ImGui::Selectable("paste here")) {
+                    paste();
+                    if (clipboard.objectType == ObjectType::Path) {
+                        const float dx = mouse_pos.x - clipboard.path.p_min.x;
+                        const float dy = mouse_pos.y - clipboard.path.p_min.y;
+                        for (auto& point : paths.back().points) {
+                            point.x += dx;
+                            point.y += dy;
+                        }
+                    }
+                    if (clipboard.objectType == ObjectType::Image) {
+                        const float dx = mouse_pos.x - clipboard.image.p_min.x;
+                        const float dy = mouse_pos.y - clipboard.image.p_min.y;
+                        images.back().p_min.x += dx;
+                        images.back().p_min.y += dy;
+                        images.back().p_max.x += dx;
+                        images.back().p_max.y += dy;
+                    }
                 }
                 ImGui::EndPopup();
             }

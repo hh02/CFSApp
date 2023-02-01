@@ -23,8 +23,30 @@
 namespace sml=boost::sml;
 
 namespace CFSUI::Canvas {
-    using Node = std::array<ImVec2, 3>;
-    // One node has three points: 1 path point, 2 control points
+    enum class ObjectType {
+        None,
+        PathPoint,
+        CtrlPoint,
+        Path,
+        PathTop,
+        PathBottom,
+        PathLeft,
+        PathRight,
+        PathTopLeft,
+        PathTopRight,
+        PathBottomLeft,
+        PathBottomRight,
+        Image,
+        ImageTop,
+        ImageBottom,
+        ImageLeft,
+        ImageRight,
+        ImageTopLeft,
+        ImageTopRight,
+        ImageBottomLeft,
+        ImageBottomRight,
+    };
+
     struct Path {
         std::vector<ImVec2> points;
         bool is_closed;
@@ -48,7 +70,7 @@ namespace CFSUI::Canvas {
 
     class History {
     public:
-        explicit History(int theCapacity) : capacity(theCapacity), head(0), tail(0), curr(0), paths_states(theCapacity), images_states(theCapacity){}
+        explicit History(int theCapacity = 10) : capacity(theCapacity), head(0), tail(0), curr(0), paths_states(theCapacity), images_states(theCapacity){}
         void push_back(const std::vector<Path>& paths, const std::vector<Image>& images) {
             curr = (curr + 1) % capacity;
             tail = curr;
@@ -86,29 +108,16 @@ namespace CFSUI::Canvas {
         std::vector<std::vector<Image>> images_states;
     };
 
-    enum class ObjectType {
-        None,
-        PathPoint,
-        CtrlPoint,
-        Path,
-        PathTop,
-        PathBottom,
-        PathLeft,
-        PathRight,
-        PathTopLeft,
-        PathTopRight,
-        PathBottomLeft,
-        PathBottomRight,
-        Image,
-        ImageTop,
-        ImageBottom,
-        ImageLeft,
-        ImageRight,
-        ImageTopLeft,
-        ImageTopRight,
-        ImageBottomLeft,
-        ImageBottomRight,
+    struct Clipboard {
+        Clipboard() : objectType(ObjectType::None) {}
+        ObjectType objectType;
+        union {
+            Path path;
+            Image image;
+        };
+        ~Clipboard() {}
     };
+
 
 
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b);
