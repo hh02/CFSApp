@@ -61,6 +61,7 @@ namespace CFSUI::Canvas {
         if (ImGui::Begin("Canvas", open)) {
             static std::vector<Path> paths;
             static std::vector<Image> images;
+            static History history(10);
             static CubicSplineTest::ClosestPointSolver solver;
             bool is_clicked_button = ImGui::Button("New path");
             ImGui::SameLine();
@@ -71,7 +72,7 @@ namespace CFSUI::Canvas {
                         "",
                         2,
                         filterPatterns,
-                        "image files",
+                        "*.jpg, *.png",
                         0);
                 if (filename != nullptr) {
                     int image_width = 0;
@@ -80,6 +81,7 @@ namespace CFSUI::Canvas {
                     bool ret = LoadTextureFromFile(filename, &image_texture, &image_width, &image_height);
                     IM_ASSERT(ret);
                     images.emplace_back(image_texture, image_width, image_height);
+                    history.push_back(paths, images);
                 }
             }
             ImGui::SameLine();
@@ -90,10 +92,11 @@ namespace CFSUI::Canvas {
                         "",
                         1,
                         filterPatterns,
-                        "svg files",
+                        "*.svg",
                         0);
                 if (filename != nullptr) {
                     svg::load_path(filename, paths);
+                    history.push_back(paths, images);
                 }
             }
             ImGui::SameLine();
@@ -168,6 +171,10 @@ namespace CFSUI::Canvas {
             const bool is_mouse_scrolled = is_hovered && (io.MouseWheel != 0);
             const ImVec2 mouse_pos((io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling);
 
+            // keyboard status
+            const bool is_keyboard_undo = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_Z]);
+            const bool is_keyboard_redo = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_Y]);
+
             // set properties
             static float point_radius = 4.0f;
             static const float radius_bigger_than = 2.0f;
@@ -221,6 +228,9 @@ namespace CFSUI::Canvas {
             struct mouse_left_released {};
             struct mouse_right_released {};
             struct mouse_right_dragging {};
+
+            struct keyboard_undo {};
+            struct keyboard_redo {};
 
             // guard
             static auto is_last_path_closed = [] {
@@ -537,7 +547,7 @@ namespace CFSUI::Canvas {
             };
 
             // set moving context (moving points, mouse moved distance)
-            static auto set_moving_context = [&io] {
+            static auto set_moving_context = [] {
                 moving_distance = 0.f;
                 // clear vector
                 std::vector<ImVec2*>().swap(moving_points_ptr);
@@ -728,6 +738,20 @@ namespace CFSUI::Canvas {
                 translate.y += io.MouseDelta.y;
             };
 
+            static auto undo = [] {
+                history.undo(paths, images);
+                selected_type = ObjectType::None;
+                hovered_type = ObjectType::None;
+            };
+            static auto redo = [] {
+                history.redo(paths, images);
+                selected_type = ObjectType::None;
+                hovered_type = ObjectType::None;
+            };
+            static auto update_history = [] {
+                history.push_back(paths, images);
+            };
+
 
             class TransitionTable {
             public:
@@ -737,18 +761,21 @@ namespace CFSUI::Canvas {
                             * Normal_s + event<mouse_moved> / update_hovered,
                             Normal_s + event<mouse_scrolled> / zoom,
                             Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
-                            Normal_s + event<mouse_left_clicked> / (set_moving_context, update_selected) = Moving_s,
+                            Normal_s + event<mouse_left_clicked> / (update_selected, set_moving_context) = Moving_s,
                             Normal_s + event<mouse_right_dragging> = Dragging_s,
                             Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
                             Normal_s + event<mouse_right_released> [is_image] / (update_selected, show_image_popup),
+                            Normal_s + event<keyboard_undo> / undo,
+                            Normal_s + event<keyboard_redo> /redo,
                             Dragging_s + event<mouse_right_released> = Normal_s,
                             Dragging_s + event<mouse_moved> / update_translate,
                             Inserting_s + event<mouse_left_released> [is_inserting_first] / new_node,
-                            Inserting_s + event<mouse_left_released> [!is_inserting_first && !is_start_point] = Normal_s,
-                            Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / close_path = Normal_s,
+                            Inserting_s + event<mouse_left_released> [!is_inserting_first && !is_start_point] / update_history = Normal_s,
+                            Inserting_s + event<mouse_left_clicked> [!is_inserting_first && is_start_point] / (close_path, update_history) = Normal_s,
                             Inserting_s + event<mouse_moved> / update_inserting_points_pos,
                             Moving_s + event<mouse_left_released> [!is_moving_moved && is_open_point] / new_node = Inserting_s,
-                            Moving_s + event<mouse_left_released> [is_moving_moved || !is_open_point] = Normal_s,
+                            Moving_s + event<mouse_left_released> [!is_moving_moved && !is_open_point] = Normal_s,
+                            Moving_s + event<mouse_left_released> [is_moving_moved] / update_history = Normal_s,
                             Moving_s + event<mouse_moved> / update_moving_context
                     );
                 }
@@ -776,18 +803,13 @@ namespace CFSUI::Canvas {
             if (is_mouse_right_released) {
                 state_machine.process_event(mouse_right_released{});
             }
-
-/*
-            if (hovered_type == ObjectType::PathPoint) {
-                std::cout << "path point" << std::endl;
-            } else if (hovered_type == ObjectType::Path) {
-                std::cout << "path" << std::endl;
-            } else if (hovered_type == ObjectType::None) {
-                std::cout << "None" << std::endl;
-            } else if (hovered_type == ObjectType::CtrlPoint) {
-                std::cout << "control point" << std::endl;
+            if (is_keyboard_undo) {
+                state_machine.process_event(keyboard_undo{});
             }
-*/
+            if (is_keyboard_redo) {
+                state_machine.process_event(keyboard_redo{});
+            }
+
 
             if (hovered_type == ObjectType::PathTop || hovered_type == ObjectType::PathBottom
                 || hovered_type == ObjectType::ImageTop || hovered_type == ObjectType::ImageBottom) {
