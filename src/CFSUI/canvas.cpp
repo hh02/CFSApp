@@ -752,13 +752,21 @@ namespace CFSUI::Canvas {
             };
 
             static auto undo = [] {
+                const size_t prev_paths_size = paths.size();
+                const size_t prev_images_size = images.size();
                 history.undo(paths, images);
-                selected_type = ObjectType::None;
+                if (paths.size() != prev_paths_size || images.size() != prev_images_size) {
+                    selected_type = ObjectType::None;
+                }
                 update_hovered();
             };
             static auto redo = [] {
+                const size_t prev_paths_size = paths.size();
+                const size_t prev_images_size = images.size();
                 history.redo(paths, images);
-                selected_type = ObjectType::None;
+                if (paths.size() != prev_paths_size || images.size() != prev_images_size) {
+                    selected_type = ObjectType::None;
+                }
                 update_hovered();
             };
             static auto update_history = [] {

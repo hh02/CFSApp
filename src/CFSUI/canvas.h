@@ -12,7 +12,6 @@
 #include <imgui.h>
 #include <cstdio>
 #include <cmath>
-#include <iostream>
 #include <vector>
 #include <array>
 #include "main.h"
@@ -85,7 +84,6 @@ namespace CFSUI::Canvas {
             if (curr == head) {
                 return;
             }
-            std::cout << head << ", " << curr << ", " << tail << std::endl;
             curr = (curr - 1 + capacity) % capacity;
             paths = paths_states[curr];
             images = images_states[curr];
