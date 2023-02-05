@@ -1,16 +1,16 @@
-#ifndef CFSAPP_PATH2POINTS_H
-#define CFSAPP_PATH2POINTS_H
+#ifndef CFSAPP_PATHSAMPLING_H
+#define CFSAPP_PATHSAMPLING_H
 
 #include <imgui.h>
 #include <vector>
 
-
 namespace CFSUI {
-    class Path2Points {
+    class PathSampling {
     public:
-        Path2Points() : imax{60}, step{5.f} {}
-        Path2Points(int theImax, float theStep) : imax{theImax}, step{theStep} {}
-        void path2Points(std::vector<ImVec2>& points);
+        PathSampling() : imax{60}, step{5.f} {}
+        PathSampling(int theImax, float theStep) : imax{theImax}, step{theStep} {}
+        void pathSamplingByLength(std::vector<ImVec2>& points);
+        void pathSamplingByTime(std::vector<ImVec2>& points);
         void setPoints(const std::vector<ImVec2>& points, size_t i);
         void setStep(float theStep);
         void setImax(int theImax);
@@ -23,5 +23,6 @@ namespace CFSUI {
         [[nodiscard]] float speed(float t) const;
         [[nodiscard]] float getCurveParameter(float s) const;
     };
-}
-#endif //CFSAPP_PATH2POINTS_H
+} // CFSUI
+
+#endif //CFSAPP_PATHSAMPLING_H
