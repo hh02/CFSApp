@@ -6,8 +6,8 @@
 #include "canvas.h"
 #include "svg.h"
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_WINDOWS_UTF8
 #include "stb_image.h"
+#include "tinyfiledialogs.h"
 #include "CubicSpline.h"
 
 
@@ -166,7 +166,7 @@ namespace CFSUI::Canvas {
             // mouse status
             const bool is_mouse_left_clicked = is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             const bool is_mouse_left_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-            const bool is_mouse_right_released = is_hovered &&  ImGui::IsMouseReleased(ImGuiMouseButton_Right);
+            const bool is_mouse_right_released = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
             const bool is_mouse_scrolled = is_hovered && (io.MouseWheel != 0);
@@ -340,7 +340,7 @@ namespace CFSUI::Canvas {
                         const float xa = 3.f * (-points[i].x + 3.f*points[i+1].x - 3.f*points[i+2].x + points[i+3].x);
                         const float xb = 6.f * (points[i].x - 2.f*points[i+1].x + points[i+2].x);
                         const float xc = 3.f * (points[i+1].x - points[i].x);
-                        if (std::fabs(xa - 0.f) > 0.001) {
+                        if (std::fabs(xa - 0.f) > 0.001f) {
                             float t = (-xb + std::sqrt(xb*xb - 4.f*xa*xc)) / (2.f*xa);
                             if (0.f < t && t < 1.f) {
                                 const float val = points[i].x*std::pow(1.f-t, 3.f) + 3.f*points[i+1].x*t*std::pow(1.f-t, 2.f) + 3.f*points[i+2].x*std::pow(t, 2.f)*(1.f-t) + points[i+3].x * std::pow(t, 3.f);
@@ -357,7 +357,7 @@ namespace CFSUI::Canvas {
                         const float ya = 3.f * (-points[i].y + 3.f*points[i+1].y - 3.f*points[i+2].y + points[i+3].y);
                         const float yb = 6.f * (points[i].y - 2.f*points[i+1].y + points[i+2].y);
                         const float yc = 3.f * (points[i+1].y - points[i].y);
-                        if (std::fabs(ya - 0.f) > 0.001) {
+                        if (std::fabs(ya - 0.f) > 0.001f) {
                             float t = (-yb + std::sqrt(yb*yb - 4.f*ya*yc)) / (2.f*ya);
                             if (0.f < t && t < 1.f) {
                                 const float val = points[i].y*std::pow(1.f-t, 3.f) + 3.f*points[i+1].y*t*std::pow(1.f-t, 2.f) + 3.f*points[i+2].y*std::pow(t, 2.f)*(1.f-t) + points[i+3].y * std::pow(t, 3.f);

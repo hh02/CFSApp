@@ -11,7 +11,7 @@ namespace CFSUI::svg {
             for (NSVGpath* path = shape->paths; path != nullptr; path = path->next) {
                 Canvas::Path ph;
                 ph.is_closed = path->closed;
-                const float points_num = path->closed ? path->npts-4 : path->npts-1;
+                const int points_num = path->closed ? path->npts-4 : path->npts-1;
                 for (int i = 0; i < points_num; i++) {
                     ph.points.emplace_back(path->pts[i*2], path->pts[i*2+1]);
                 }

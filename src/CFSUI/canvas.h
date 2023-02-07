@@ -16,8 +16,6 @@
 #include <array>
 #include "main.h"
 #include "sml.hpp"
-#include "tinyfiledialogs.h"
-// #include <glad/glad.h>
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 namespace sml=boost::sml;
 
