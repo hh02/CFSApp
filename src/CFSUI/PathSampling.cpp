@@ -2,18 +2,37 @@
 #include <cmath>
 
 namespace CFSUI {
-    void PathSampling::pathSamplingByLength(std::vector<ImVec2>& points) {
-        points.emplace_back(p0);
-        auto s = step;
-        while (true) {
-            auto t = getCurveParameter(s);
-            if (t > 1.f || t < 0.f) break;
-            points.emplace_back(getPoint(t));
-            s += step;
+    std::vector<ImVec2> PathSampling::pathSamplingByLength(const Canvas::Path& path) {
+        std::vector<ImVec2> points;
+        auto samplingCurve = [&]() {
+            points.emplace_back(p0);
+            auto s = step;
+            while (true) {
+                auto t = getCurveParameter(s);
+                if (t > 1.f || t < 0.f) break;
+                points.emplace_back(getPoint(t));
+                s += step;
+            }
+        };
+        for (size_t i = 0; i + 3 < path.points.size(); i += 3) {
+            p0 = path.points[i];
+            p1 = path.points[i+1];
+            p2 = path.points[i+2];
+            p3 = path.points[i+3];
+            samplingCurve();
+
         }
+        if (path.is_closed) {
+            p0 = path.points[path.points.size()-3];
+            p1 = path.points[path.points.size()-2];
+            p2 = path.points[path.points.size()-1];
+            p3 = path.points[0];
+            samplingCurve();
+        }
+        return points;
     }
 
-    void PathSampling::pathSamplingByTime(std::vector<ImVec2> &points) {
+    float PathSampling::getCurveLength() const {
         // calculate curve length
         float l = 0.f;
         float r = 1.f;
@@ -34,16 +53,36 @@ namespace CFSUI {
                 break;
             }
         }
+        return l;
+    }
 
-        // calculate interval by curve length
-        auto interval = 1.f / (std::ceil(l / step) * 1.2f + 1.f);
-
-
-        auto t = 0.f;
-        while (t < 1.f) {
-            points.emplace_back(getPoint(t));
-            t += interval;
+    std::vector<ImVec2> PathSampling::pathSamplingByTime(const Canvas::Path& path) {
+        std::vector<ImVec2> points;
+        auto samplingCurve = [&]() {
+            auto l = getCurveLength();
+            // calculate interval by curve length
+            auto interval = 1.f / (std::ceil(l / step) * 1.2f + 1.f);
+            auto t = 0.f;
+            while (t < 1.f) {
+                points.emplace_back(getPoint(t));
+                t += interval;
+            }
+        };
+        for (size_t i = 0; i + 3 < path.points.size(); i += 3) {
+            p0 = path.points[i];
+            p1 = path.points[i+1];
+            p2 = path.points[i+2];
+            p3 = path.points[i+3];
+            samplingCurve();
         }
+        if (path.is_closed) {
+            p0 = path.points[path.points.size() - 3];
+            p1 = path.points[path.points.size() - 2];
+            p2 = path.points[path.points.size() - 1];
+            p3 = path.points[0];
+            samplingCurve();
+        }
+        return points;
     }
 
 
@@ -89,4 +128,5 @@ namespace CFSUI {
     void PathSampling::setImax(int theImax) {
         imax = theImax;
     }
+
 } // CFSUI

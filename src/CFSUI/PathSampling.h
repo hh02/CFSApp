@@ -3,14 +3,15 @@
 
 #include <imgui.h>
 #include <vector>
+#include "canvas.h"
 
 namespace CFSUI {
     class PathSampling {
     public:
         PathSampling() : imax{60}, step{5.f} {}
         PathSampling(int theImax, float theStep) : imax{theImax}, step{theStep} {}
-        void pathSamplingByLength(std::vector<ImVec2>& points);
-        void pathSamplingByTime(std::vector<ImVec2>& points);
+        std::vector<ImVec2> pathSamplingByLength(const Canvas::Path& path);
+        std::vector<ImVec2> pathSamplingByTime(const Canvas::Path& path);
         void setPoints(const std::vector<ImVec2>& points, size_t i);
         void setStep(float theStep);
         void setImax(int theImax);
@@ -22,6 +23,7 @@ namespace CFSUI {
         [[nodiscard]] ImVec2 getPoint(float t) const;
         [[nodiscard]] float speed(float t) const;
         [[nodiscard]] float getCurveParameter(float s) const;
+        [[nodiscard]] float getCurveLength() const;
     };
 } // CFSUI
 

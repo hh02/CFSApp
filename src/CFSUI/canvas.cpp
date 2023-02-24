@@ -3,13 +3,15 @@
 #include <cstdio>
 #include <cmath>
 #include <vector>
+#include <fstream>
 #include "canvas.h"
+#include "PathSampling.h"
 #include "svg.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "tinyfiledialogs.h"
 #include "CubicSpline.h"
-
+#include "CFSCNC.h"
 
 namespace CFSUI::Canvas {
     const float collinear_eps = 0.1f;
@@ -117,6 +119,29 @@ namespace CFSUI::Canvas {
             ImGui::SameLine();
             static bool preview_mode = false;
             ImGui::Checkbox("Preview mode", &preview_mode);
+
+            static float tool_path_size = 5.f;
+            if (ImGui::Button("Generate")) {
+                PathSampling pathSampling;
+                pathSampling.setImax(200);
+                pathSampling.setStep(tool_path_size);
+                std::vector<std::vector<ImVec2>> paths_points;
+                for (const auto& path : paths) {
+                    paths_points.emplace_back(pathSampling.pathSamplingByTime(path));
+                }
+
+                std::ofstream file("./shape.txt");
+                file << paths_points.size() << std::endl;
+                for (const auto& path_points : paths_points) {
+                    file << path_points.size() << std::endl;
+                    for (const auto& point : path_points) {
+                        file << point.x << " " << point.y << std::endl;
+                    }
+                }
+                file.close();
+                cnc::CFSCNC cfscnc;
+                cfscnc.OffsetsBasedCFSLinking("./", true, false);
+            }
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
             static ImVec4 ctrl_color_vec {0.5f, 0.5f, 0.5f, 1.0f};
