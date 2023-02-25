@@ -1,7 +1,8 @@
-#include "my_imconfig.h"
+#define IMGUI_USER_CONFIG "my_imconfig.h"
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <misc/freetype/imgui_freetype.h>
 #include <cstdio>
 #include "main.h"
 #include "canvas.h"
@@ -55,7 +56,7 @@ int main(int, char **) {
 #endif
 
     // Create window with graphics context
-    GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(1280, 720, "CFSApp", nullptr, nullptr);
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);
@@ -70,8 +71,8 @@ int main(int, char **) {
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
+    // ImGui::StyleColorsDark();
+    ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -93,13 +94,38 @@ int main(int, char **) {
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
 
+    // Custom Glyph Ranges
+    ImVector<ImWchar> ranges;
+    ImFontGlyphRangesBuilder builder;
+    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径");
+    builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+    builder.BuildRanges(&ranges);
+
+    ImFontConfig cfg;
+    cfg.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
+    ImFont* font = io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", 18.0f, &cfg, ranges.Data);
+    IM_ASSERT(font != nullptr);
+    io.Fonts->Build();
+
     // Our state
     bool show_demo_window = true;
-    bool show_another_window = false;
+    bool show_canvas_window = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    float prev_scale = 1.0f;
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        // dpi
+        float xscale, yscale;
+        glfwGetWindowContentScale(window, &xscale, &yscale);
+        if (xscale != prev_scale) {
+            prev_scale = xscale;
+            io.Fonts->Clear();
+            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", xscale * 19.0f, &cfg, ranges.Data);
+            io.Fonts->Build();
+            ImGui_ImplOpenGL3_DestroyFontsTexture();
+            ImGui_ImplOpenGL3_CreateFontsTexture();
+        }
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -112,11 +138,65 @@ int main(int, char **) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        static bool demo_open = true;
-        ImGui::ShowDemoWindow(&demo_open);
-        static bool canvas_open = true;
-        CFSUI::Canvas::showCanvas(&canvas_open);
 
+
+
+        // MenuBar
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu(u8"文件")) {
+                if (ImGui::MenuItem(u8"新建", "Ctrl+N")) {
+
+                }
+                if (ImGui::MenuItem(u8"打开", "Ctrl+O")) {
+
+                }
+                if (ImGui::MenuItem(u8"保存", "Ctrl+S")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(u8"编辑")) {
+                if (ImGui::MenuItem(u8"撤销", "Ctrl+Z")) {
+
+                }
+                if (ImGui::MenuItem(u8"重做", "Ctrl+Y")) {
+
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem(u8"剪切", "Ctrl+X")) {
+
+                }
+                if (ImGui::MenuItem(u8"复制", "Ctrl+C")) {
+
+                }
+                if (ImGui::MenuItem(u8"粘贴", "Ctrl+V")) {
+
+                }
+                if (ImGui::MenuItem(u8"删除", "Delete")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(u8"插入")) {
+                if (ImGui::MenuItem(u8"图片")) {
+
+                }
+                if (ImGui::MenuItem(u8"路径")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(u8"帮助")) {
+                if (ImGui::MenuItem(u8"关于")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        ImGui::ShowDemoWindow(&show_demo_window);
+        CFSUI::Canvas::showCanvas(&show_canvas_window);
 
         // Rendering
         ImGui::Render();

@@ -1,10 +1,8 @@
-// #include "my_imconfig.h"
-#include <imgui.h>
+#include "canvas.h"
 #include <cstdio>
 #include <cmath>
 #include <vector>
 #include <fstream>
-#include "canvas.h"
 #include "PathSampling.h"
 #include "svg.h"
 #define STB_IMAGE_IMPLEMENTATION

@@ -9,12 +9,11 @@
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
+#define IMGUI_USER_CONFIG "my_imconfig.h"
 #include <imgui.h>
 #include <cstdio>
 #include <cmath>
 #include <vector>
-#include <array>
-#include "main.h"
 #include "sml.hpp"
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 namespace sml=boost::sml;
