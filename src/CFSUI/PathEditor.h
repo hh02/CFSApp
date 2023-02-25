@@ -2,8 +2,8 @@
 // Created by huihao on 2023/1/5.
 //
 
-#ifndef CFSAPP_CANVAS_H
-#define CFSAPP_CANVAS_H
+#ifndef CFSAPP_PATHEDITOR_H
+#define CFSAPP_PATHEDITOR_H
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
 // (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
@@ -18,7 +18,7 @@
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 namespace sml=boost::sml;
 
-namespace CFSUI::Canvas {
+namespace CFSUI::PathEditor {
     enum class ObjectType {
         None,
         PathPoint,
@@ -118,6 +118,6 @@ namespace CFSUI::Canvas {
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b);
 
 
-    void showCanvas(bool *open);
+    void showPathEditor(bool *open);
 }
-#endif //CFSAPP_CANVAS_H
+#endif //CFSAPP_PATHEDITOR_H

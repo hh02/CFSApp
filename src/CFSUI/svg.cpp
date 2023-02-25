@@ -1,15 +1,15 @@
 #define NANOSVG_IMPLEMENTATION
 #include "nanosvg.h"
-#include "canvas.h"
+#include "PathEditor.h"
 #include "tinyxml2.h"
 #include <string>
 
 namespace CFSUI::svg {
-    void load_path(const char* filename, std::vector<Canvas::Path>& paths) {
+    void load_path(const char* filename, std::vector<PathEditor::Path>& paths) {
         auto image = nsvgParseFromFile(filename, "px", 96);
         for (NSVGshape* shape = image->shapes; shape != nullptr; shape = shape->next) {
             for (NSVGpath* path = shape->paths; path != nullptr; path = path->next) {
-                Canvas::Path ph;
+                PathEditor::Path ph;
                 ph.is_closed = path->closed;
                 const int points_num = path->closed ? path->npts-4 : path->npts-1;
                 for (int i = 0; i < points_num; i++) {
@@ -20,7 +20,7 @@ namespace CFSUI::svg {
         }
         nsvgDelete(image);
     }
-    void save_path(const char* filename, const std::vector<Canvas::Path>& paths) {
+    void save_path(const char* filename, const std::vector<PathEditor::Path>& paths) {
         tinyxml2::XMLDocument svg_doc;
         const char* declaration =R"(<?xml version="1.0" encoding="UTF-8" standalone="no"?>)";
         svg_doc.Parse(declaration);

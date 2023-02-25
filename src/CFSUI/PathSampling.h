@@ -3,15 +3,15 @@
 
 #include <imgui.h>
 #include <vector>
-#include "canvas.h"
+#include "PathEditor.h"
 
 namespace CFSUI {
     class PathSampling {
     public:
         PathSampling() : imax{60}, step{5.f} {}
         PathSampling(int theImax, float theStep) : imax{theImax}, step{theStep} {}
-        std::vector<ImVec2> pathSamplingByLength(const Canvas::Path& path);
-        std::vector<ImVec2> pathSamplingByTime(const Canvas::Path& path);
+        std::vector<ImVec2> pathSamplingByLength(const PathEditor::Path& path);
+        std::vector<ImVec2> pathSamplingByTime(const PathEditor::Path& path);
         void setPoints(const std::vector<ImVec2>& points, size_t i);
         void setStep(float theStep);
         void setImax(int theImax);

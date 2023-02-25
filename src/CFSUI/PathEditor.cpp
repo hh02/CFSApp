@@ -1,4 +1,4 @@
-#include "canvas.h"
+#include "PathEditor.h"
 #include <cstdio>
 #include <cmath>
 #include <vector>
@@ -11,7 +11,7 @@
 #include "CubicSpline.h"
 #include "CFSCNC.h"
 
-namespace CFSUI::Canvas {
+namespace CFSUI::PathEditor {
     const float collinear_eps = 0.1f;
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b) {
         return std::hypot(a.x - b.x, a.y - b.y);
@@ -57,8 +57,8 @@ namespace CFSUI::Canvas {
         return {point.x*scaling+translate.x, point.y*scaling+translate.y};
     }
 
-    void showCanvas(bool *open) {
-        if (ImGui::Begin("Canvas", open)) {
+    void showPathEditor(bool *open) {
+        if (ImGui::Begin("PathEditor", open)) {
             static std::vector<Path> paths;
             static std::vector<Image> images;
             static History history(10);

@@ -4,11 +4,11 @@
 
 #ifndef CFSAPP_SVG_H
 #define CFSAPP_SVG_H
-#include "canvas.h"
+#include "PathEditor.h"
 namespace CFSUI::svg {
 
-    void load_path(const char* filename, std::vector<Canvas::Path>& paths);
-    void save_path(const char* filename, const std::vector<Canvas::Path>& paths);
+    void load_path(const char* filename, std::vector<PathEditor::Path>& paths);
+    void save_path(const char* filename, const std::vector<PathEditor::Path>& paths);
 
 }
 #endif //CFSAPP_SVG_H

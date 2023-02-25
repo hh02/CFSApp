@@ -2,7 +2,7 @@
 #include <cmath>
 
 namespace CFSUI {
-    std::vector<ImVec2> PathSampling::pathSamplingByLength(const Canvas::Path& path) {
+    std::vector<ImVec2> PathSampling::pathSamplingByLength(const PathEditor::Path& path) {
         std::vector<ImVec2> points;
         auto samplingCurve = [&]() {
             points.emplace_back(p0);
@@ -56,7 +56,7 @@ namespace CFSUI {
         return l;
     }
 
-    std::vector<ImVec2> PathSampling::pathSamplingByTime(const Canvas::Path& path) {
+    std::vector<ImVec2> PathSampling::pathSamplingByTime(const PathEditor::Path& path) {
         std::vector<ImVec2> points;
         auto samplingCurve = [&]() {
             auto l = getCurveLength();

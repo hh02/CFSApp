@@ -5,7 +5,7 @@
 #include <misc/freetype/imgui_freetype.h>
 #include <cstdio>
 #include "main.h"
-#include "canvas.h"
+#include "PathEditor.h"
 
 #define GL_SILENCE_DEPRECATION
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -196,7 +196,7 @@ int main(int, char **) {
         }
 
         ImGui::ShowDemoWindow(&show_demo_window);
-        CFSUI::Canvas::showCanvas(&show_canvas_window);
+        CFSUI::PathEditor::showPathEditor(&show_canvas_window);
 
         // Rendering
         ImGui::Render();
