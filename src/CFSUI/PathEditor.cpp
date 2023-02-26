@@ -57,19 +57,95 @@ namespace CFSUI::PathEditor {
         return {point.x*scaling+translate.x, point.y*scaling+translate.y};
     }
 
-    void showPathEditor(bool *open) {
-        if (ImGui::Begin("PathEditor", open)) {
+    void showMenuBar() {
+        // MenuBar
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu(u8"文件")) {
+                if (ImGui::MenuItem(u8"新建", "Ctrl+N")) {
+
+                }
+                if (ImGui::MenuItem(u8"打开", "Ctrl+O")) {
+
+                }
+                if (ImGui::MenuItem(u8"保存", "Ctrl+S")) {
+
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem(u8"退出", "Alt+F4")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(u8"编辑")) {
+                if (ImGui::MenuItem(u8"撤销", "Ctrl+Z")) {
+
+                }
+                if (ImGui::MenuItem(u8"重做", "Ctrl+Y")) {
+
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem(u8"剪切", "Ctrl+X")) {
+
+                }
+                if (ImGui::MenuItem(u8"复制", "Ctrl+C")) {
+
+                }
+                if (ImGui::MenuItem(u8"粘贴", "Ctrl+V")) {
+
+                }
+                if (ImGui::MenuItem(u8"删除", "Delete")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(u8"插入")) {
+                if (ImGui::MenuItem(u8"图片")) {
+
+                }
+                if (ImGui::MenuItem(u8"路径")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(u8"帮助")) {
+                if (ImGui::MenuItem(u8"关于")) {
+
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+    }
+
+
+
+    void showPathEditor(bool *p_open) {
+        // Fullscreen window flags
+        static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
+                                        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings
+                                        | ImGuiWindowFlags_MenuBar;
+
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+
+        if (ImGui::Begin("PathEditor", p_open, flags)) {
+            // Path editor's menu bar
+            showMenuBar();
+
+            static char* saved_filename {nullptr};
+            static bool is_modified {false};
             static std::vector<Path> paths;
             static std::vector<Image> images;
             static History history(10);
             static Clipboard clipboard;
             static CubicSplineTest::ClosestPointSolver solver;
-            bool is_clicked_button = ImGui::Button("New path");
-            ImGui::SameLine();
-            if (ImGui::Button("Open image")) {
+            bool is_clicked_new_path = false;
+
+            auto insert_image = []() {
                 static char const * filterPatterns[2] = { "*.jpg", "*.png" };
                 auto filename = tinyfd_openFileDialog(
-                        "Open an image",
+                        "Open an Image",
                         "",
                         2,
                         filterPatterns,
@@ -84,9 +160,8 @@ namespace CFSUI::PathEditor {
                     images.emplace_back(image_texture, image_width, image_height);
                     history.push_back(paths, images);
                 }
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Open path")) {
+            };
+            auto insert_path = []() {
                 static char const * filterPatterns[1] = {"*.svg"};
                 auto filename = tinyfd_openFileDialog(
                         "Open a svg",
@@ -99,27 +174,28 @@ namespace CFSUI::PathEditor {
                     svg::load_path(filename, paths);
                     history.push_back(paths, images);
                 }
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Save paths")) {
-                static char const* filterPatterns[1] = {"*.svg"};
-                auto filename = tinyfd_saveFileDialog(
-                        "Save paths",
-                        "",
-                        1,
-                        filterPatterns,
-                        "svg files"
-                        );
-                if (filename != nullptr) {
-                    svg::save_path(filename, paths);
-                }
-            }
-            ImGui::SameLine();
-            static bool preview_mode = false;
-            ImGui::Checkbox("Preview mode", &preview_mode);
+            };
+            auto new_file = []() {
 
+            };
+            auto save_file = []() {
+                if (saved_filename == nullptr) {
+                    static char const* filterPatterns[1] = {"*.svg"};
+                    saved_filename = tinyfd_saveFileDialog(
+                            "Save paths",
+                            "Untitled.svg",
+                            1,
+                            filterPatterns,
+                            "svg files"
+                    );
+                }
+                if (saved_filename != nullptr && is_modified) {
+                    svg::save_path(saved_filename, paths);
+                    is_modified = false;
+                }
+            };
             static float tool_path_size = 5.f;
-            if (ImGui::Button("Generate")) {
+            auto generate_spiral = []() {
                 PathSampling pathSampling;
                 pathSampling.setImax(200);
                 pathSampling.setStep(tool_path_size);
@@ -139,7 +215,85 @@ namespace CFSUI::PathEditor {
                 file.close();
                 cnc::CFSCNC cfscnc;
                 cfscnc.OffsetsBasedCFSLinking("./", true, false);
+            };
+
+            // Path editor's tool bar
+            ImGui::PushStyleColor(ImGuiCol_Button, {255, 255, 255, 0});
+            //  New file
+            if (ImGui::Button(u8"\uE900")) {
+
             }
+            ImGui::SameLine();
+            // Open file
+            if (ImGui::Button(u8"\uE901")) {
+
+            }
+            ImGui::SameLine();
+            // Save file
+            if (ImGui::Button(u8"\uE902")) {
+                save_file();
+            }
+            ImGui::SameLine();
+
+            // edit cut
+            if (ImGui::Button(u8"\uE904")) {
+
+            }
+            ImGui::SameLine();
+
+            // edit copy
+            if (ImGui::Button(u8"\uE903")) {
+
+            }
+            ImGui::SameLine();
+
+            // edit paste
+            if (ImGui::Button(u8"\uE906")) {
+
+            }
+            ImGui::SameLine();
+
+/*        // edit delete
+        if (ImGui::Button(u8"\uE905")) {
+
+        }
+        ImGui::SameLine();*/
+
+
+            // edit undo
+            if (ImGui::Button(u8"\uE908")) {
+
+            }
+            ImGui::SameLine();
+
+            // edit redo
+            if (ImGui::Button(u8"\uE907")) {
+
+            }
+            ImGui::SameLine();
+
+            // insert image
+            if (ImGui::Button(u8"\uE909")) {
+
+            }
+            ImGui::SameLine();
+
+            // tool curve
+            if (ImGui::Button(u8"\uE90A")) {
+
+            }
+            ImGui::SameLine();
+
+            // view-visible
+            if (ImGui::Button(u8"\uE90B")) {
+
+            }
+
+            ImGui::PopStyleColor();
+
+            static bool preview_mode = false;
+            ImGui::Checkbox(u8"Preview", &preview_mode);
+
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
             static ImVec4 ctrl_color_vec {0.5f, 0.5f, 0.5f, 1.0f};
@@ -248,7 +402,7 @@ namespace CFSUI::PathEditor {
             static auto Moving_s = sml::state<class Moving>;
 
             // event
-            struct clicked_button {};
+            struct clicked_new_path {};
             struct mouse_moved {};
             struct mouse_scrolled {};
             struct mouse_left_clicked {};
@@ -857,7 +1011,7 @@ namespace CFSUI::PathEditor {
                     return make_transition_table(
                             * Normal_s + event<mouse_moved> / update_hovered,
                             Normal_s + event<mouse_scrolled> / zoom,
-                            Normal_s + event<clicked_button> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
+                            Normal_s + event<clicked_new_path> [is_last_path_closed] / (new_path, new_node) = Inserting_s,
                             Normal_s + event<mouse_left_clicked> / (update_selected, set_moving_context) = Moving_s,
                             Normal_s + event<mouse_right_dragging> = Dragging_s,
                             Normal_s + event<mouse_right_released> [is_path] / (update_selected, show_path_popup),
@@ -883,8 +1037,8 @@ namespace CFSUI::PathEditor {
             };
             static sml::sm<TransitionTable> state_machine;
 
-            if (is_clicked_button) {
-                state_machine.process_event(clicked_button{});
+            if (is_clicked_new_path) {
+                state_machine.process_event(clicked_new_path{});
             }
             if (is_mouse_moved) {
                 state_machine.process_event(mouse_moved{});
@@ -943,14 +1097,14 @@ namespace CFSUI::PathEditor {
 
             // TODO: better name
             if (ImGui::BeginPopup("path_popup")) {
-                if (ImGui::Selectable("cut")) {
+                if (ImGui::Selectable(u8"剪切")) {
                     cut();
                     update_history();
                 }
-                if (ImGui::Selectable("copy")) {
+                if (ImGui::Selectable(u8"复制")) {
                     copy();
                 }
-                if (ImGui::Selectable("delete")) {
+                if (ImGui::Selectable(u8"删除")) {
                     paths.erase(paths.begin() + static_cast<long long>(selected_path_idx));
                     selected_type = ObjectType::None;
                     update_hovered();
@@ -995,10 +1149,10 @@ namespace CFSUI::PathEditor {
                 ImGui::EndPopup();
             }
             if (ImGui::BeginPopup("context_popup")) {
-                if (ImGui::Selectable("new path")) {
-                    state_machine.process_event(clicked_button{});
+                if (ImGui::Selectable(u8"新建路径")) {
+                    state_machine.process_event(clicked_new_path{});
                 }
-                if (ImGui::Selectable("paste here")) {
+                if (ImGui::Selectable(u8"在此粘贴")) {
                     paste();
                     if (clipboard.objectType == ObjectType::Path) {
                         const float dx = mouse_pos.x - clipboard.path.p_min.x;

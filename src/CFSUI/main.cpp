@@ -26,6 +26,10 @@ static void glfw_error_callback(int error, const char *description) {
 }
 
 
+void loadFont() {
+
+}
+
 int main(int, char **) {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -97,19 +101,25 @@ int main(int, char **) {
     // Custom Glyph Ranges
     ImVector<ImWchar> ranges;
     ImFontGlyphRangesBuilder builder;
-    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径");
+    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径退出在此");
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&ranges);
 
-    ImFontConfig cfg;
-    cfg.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
-    ImFont* font = io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", 18.0f, &cfg, ranges.Data);
-    IM_ASSERT(font != nullptr);
+    // icon ranges
+    const ImWchar icons_ranges[] = { 0xE900, 0xE901, 0xE902, 0xE903, 0xE904, 0xE905, 0xE906, 0xE907, 0xE908, 0xE909, 0xE90A, 0xE90B};
+
+    ImFontConfig config;
+    config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
+
+    ImFontConfig icon_config;
+    icon_config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
+    icon_config.MergeMode = true;
+
+    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", 18.0f, &config, ranges.Data);
+    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", 18.0f, &icon_config, icons_ranges);
     io.Fonts->Build();
 
     // Our state
-    bool show_demo_window = true;
-    bool show_canvas_window = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     float prev_scale = 1.0f;
@@ -121,7 +131,8 @@ int main(int, char **) {
         if (xscale != prev_scale) {
             prev_scale = xscale;
             io.Fonts->Clear();
-            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", xscale * 19.0f, &cfg, ranges.Data);
+            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Regular.otf", xscale * 19.0f, &config, ranges.Data);
+            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", xscale * 18.0f, &icon_config, icons_ranges);
             io.Fonts->Build();
             ImGui_ImplOpenGL3_DestroyFontsTexture();
             ImGui_ImplOpenGL3_CreateFontsTexture();
@@ -141,62 +152,9 @@ int main(int, char **) {
 
 
 
-        // MenuBar
-        if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::BeginMenu(u8"文件")) {
-                if (ImGui::MenuItem(u8"新建", "Ctrl+N")) {
 
-                }
-                if (ImGui::MenuItem(u8"打开", "Ctrl+O")) {
-
-                }
-                if (ImGui::MenuItem(u8"保存", "Ctrl+S")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(u8"编辑")) {
-                if (ImGui::MenuItem(u8"撤销", "Ctrl+Z")) {
-
-                }
-                if (ImGui::MenuItem(u8"重做", "Ctrl+Y")) {
-
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem(u8"剪切", "Ctrl+X")) {
-
-                }
-                if (ImGui::MenuItem(u8"复制", "Ctrl+C")) {
-
-                }
-                if (ImGui::MenuItem(u8"粘贴", "Ctrl+V")) {
-
-                }
-                if (ImGui::MenuItem(u8"删除", "Delete")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(u8"插入")) {
-                if (ImGui::MenuItem(u8"图片")) {
-
-                }
-                if (ImGui::MenuItem(u8"路径")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(u8"帮助")) {
-                if (ImGui::MenuItem(u8"关于")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
-        }
-
-        ImGui::ShowDemoWindow(&show_demo_window);
-        CFSUI::PathEditor::showPathEditor(&show_canvas_window);
+        static bool show_path_editor_window = true;
+        CFSUI::PathEditor::showPathEditor(&show_path_editor_window);
 
         // Rendering
         ImGui::Render();
