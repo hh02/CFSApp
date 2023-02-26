@@ -101,7 +101,7 @@ int main(int, char **) {
     // Custom Glyph Ranges
     ImVector<ImWchar> ranges;
     ImFontGlyphRangesBuilder builder;
-    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径退出在此预览模式生成取消刀具大小");
+    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径退出在此预览模式生成取消刀具大小可视化");
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&ranges);
 

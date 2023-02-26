@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 #include "PathSampling.h"
+#include "Visualization.h"
 #include "svg.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -171,6 +172,7 @@ namespace CFSUI::PathEditor {
             // some bool
             static bool preview_mode {false};
             static bool draw_big_start_point {false};
+            bool open_visualization_window {false};
             bool is_clicked_new_path {false};
 
             // Tool
@@ -183,6 +185,9 @@ namespace CFSUI::PathEditor {
 
             // tool path size
             static float tool_path_size {5.0f};
+
+            // output data (CFS visualization)
+            static std::vector<ImVec2> CFS_points;
 
             static auto update_hovered = [&mouse_pos] {
                 float min_dis = std::numeric_limits<float>::max();
@@ -617,19 +622,36 @@ namespace CFSUI::PathEditor {
                     if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                         ImGui::CloseCurrentPopup();
                         generate_CFS();
+                        open_visualization_window = true;
                     }
                     ImGui::SetItemDefaultFocus();
                     ImGui::SameLine();
                     if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                         ImGui::CloseCurrentPopup();
+                        open_visualization_window = true;
                     }
                     ImGui::EndPopup();
                 }
                 ImGui::EndTable();
             }
 
+            if (open_visualization_window) {
+                ImGui::OpenPopup(u8"可视化 CFS");
+            }
+            // Visualization Window modal
+            if (ImGui::BeginPopupModal(u8"可视化 CFS")) {
+                if (ImGui::Button("Close")) {
+                    ImGui::CloseCurrentPopup();
+                    open_visualization_window = false;
+                }
+                bool is_replay = ImGui::Button("Replay");
+                static float speed = 1.0f;
+                ImGui::InputFloat("speed", &speed, 0.1f, 1.0f);
+                Visualization::getPointsFromFile(CFS_points);
+                Visualization::animateCFS(CFS_points, speed, is_replay || open_visualization_window);
 
-
+                ImGui::EndPopup();
+            }
 
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
