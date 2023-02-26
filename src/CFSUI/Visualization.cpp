@@ -2,7 +2,7 @@
 #include <iostream>
 namespace CFSUI::Visualization {
     void getPointsFromFile(std::vector<ImVec2>& points) {
-        std::ifstream fin {"./0.path", std::ios::in};
+        std::ifstream fin {"./output.path", std::ios::in};
         if (!fin.is_open()) {
             return;
         }

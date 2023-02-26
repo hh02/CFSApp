@@ -171,8 +171,8 @@ namespace cnc {
 //					if (false)
 					if (fermat_success)
 					{
-						Output_Path(input_path + "path/" + IntString(cfs_index) + ".path");
-						Output_Obj_Cur_Normals(input_path + "path/" + IntString(cfs_index) + "_normals_curs.data");
+						Output_Path(input_path + "output" + ".path");
+//						Output_Obj_Cur_Normals(input_path + "path/" + IntString(cfs_index) + "_normals_curs.data");
 					}
 				}
 			}
