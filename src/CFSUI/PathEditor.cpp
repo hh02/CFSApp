@@ -135,8 +135,6 @@ namespace CFSUI::PathEditor {
 
             static char* saved_filename {nullptr};
             static bool is_modified {false};
-            static bool preview_mode {false};
-            bool is_clicked_new_path {false};
 
             // Data
             static std::vector<Path> paths;
@@ -144,9 +142,262 @@ namespace CFSUI::PathEditor {
             static History history(10);
             static Clipboard clipboard;
 
+            // ImGui related data
+            ImGuiIO &io = ImGui::GetIO();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            const ImVec2 mouse_pos((io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling);
+
+            // hover and select data
+            static ObjectType hovered_type = ObjectType::None;
+            static size_t hovered_path_idx = 0;
+            static size_t hovered_point_idx = 0;
+            static size_t hovered_image_idx = 0;
+
+            static ObjectType selected_type = ObjectType::None;
+            static size_t selected_path_idx = 0;
+            static size_t selected_point_idx = 0;
+            static size_t selected_image_idx = 0;
+            static bool has_prev = false;
+            static size_t prev_p0_idx = 0;
+            static size_t prev_p1_idx = 0;
+            static size_t prev_p2_idx = 0;
+            static bool has_next = false;
+            static size_t next_p3_idx = 0;
+
+            // moving data
+            static std::vector<ImVec2*> moving_points_ptr;
+            static float moving_distance = 0.f;
+            static const float moving_threshold = 0.1f;
+
+            // some bool
+            static bool preview_mode {false};
+            static bool draw_big_start_point {false};
+            bool is_clicked_new_path {false};
+
             // Tool
             static CubicSplineTest::ClosestPointSolver solver;
 
+            // thresholds, TODO: use better name
+            static const float point_threshold = 8.0f; // distance point_threshold for hovering
+            static const float line_threshold = 4.0f;
+
+
+            static auto update_hovered = [&mouse_pos] {
+                float min_dis = std::numeric_limits<float>::max();
+                auto updateMin = [&min_dis](float dis, ObjectType type, size_t path_idx, size_t point_idx) {
+                    if (dis < min_dis) {
+                        min_dis = dis;
+                        hovered_type = type;
+                        hovered_path_idx = path_idx;
+                        hovered_point_idx = point_idx;
+                    }
+                };
+                // get the nearest point
+                if (!preview_mode) {
+                    // nearest ctrl point
+                    if (selected_type == ObjectType::PathPoint) {
+                        const auto& points = paths[selected_path_idx].points;
+                        if (has_prev) {
+                            updateMin(L2Distance(points[prev_p1_idx], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, prev_p1_idx);
+                            updateMin(L2Distance(points[prev_p2_idx], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, prev_p2_idx);
+                        }
+                        if (has_next) {
+                            updateMin(L2Distance(points[selected_point_idx+1], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx + 1);
+                            updateMin(L2Distance(points[selected_point_idx+2], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx + 2);
+                        }
+                    }
+                    // path point
+                    for (size_t i = 0; i < paths.size(); i++) {
+                        if (selected_type == ObjectType::Path && selected_path_idx == i) continue;
+                        const auto& points = paths[i].points;
+                        for (size_t j = 0; j < points.size(); j += 3) {
+                            updateMin(L2Distance(points[j], mouse_pos), ObjectType::PathPoint, i, j);
+                        }
+                    }
+                    if (min_dis < point_threshold) return;
+                }
+
+
+                // resizing path point
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Path) {
+                    const auto& path = paths[selected_path_idx];
+                    updateMin(L2Distance(path.p_min, mouse_pos), ObjectType::PathTopLeft, 0, 0);
+                    updateMin(L2Distance(path.p_max, mouse_pos), ObjectType::PathBottomRight, 0, 0);
+                    updateMin(L2Distance({path.p_max.x, path.p_min.y}, mouse_pos), ObjectType::PathTopRight, 0, 0);
+                    updateMin(L2Distance({path.p_min.x, path.p_max.y}, mouse_pos), ObjectType::PathBottomLeft, 0, 0);
+                }
+                if (min_dis < point_threshold) return;
+
+                // resizing path handle
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Path) {
+                    const auto& path = paths[selected_path_idx];
+                    if (path.p_min.x < mouse_pos.x && mouse_pos.x < path.p_max.x) {
+                        updateMin(std::fabs(mouse_pos.y - path.p_min.y), ObjectType::PathTop, 0, 0);
+                        updateMin(std::fabs(mouse_pos.y - path.p_max.y), ObjectType::PathBottom, 0, 0);
+                    }
+                    if (path.p_min.y < mouse_pos.y && mouse_pos.y < path.p_max.y) {
+                        updateMin(std::fabs(mouse_pos.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
+                        updateMin(std::fabs(mouse_pos.x - path.p_max.x), ObjectType::PathRight, 0, 0);
+                    }
+                }
+                if (min_dis < line_threshold) return;
+
+
+                // resizing image point
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
+                    const auto& image = images[selected_image_idx];
+                    updateMin(L2Distance(image.p_min, mouse_pos), ObjectType::ImageTopLeft, 0, 0);
+                    updateMin(L2Distance(image.p_max, mouse_pos), ObjectType::ImageBottomRight, 0, 0);
+                    updateMin(L2Distance({image.p_max.x, image.p_min.y}, mouse_pos), ObjectType::ImageTopRight, 0, 0);
+                    updateMin(L2Distance({image.p_min.x, image.p_max.y}, mouse_pos), ObjectType::ImageBottomLeft, 0, 0);
+                }
+                if (min_dis < point_threshold) return;
+
+                // resizing image handle
+                min_dis = std::numeric_limits<float>::max();
+                if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
+                    const auto& image = images[selected_image_idx];
+                    if (image.p_min.x < mouse_pos.x && mouse_pos.x < image.p_max.x) {
+                        updateMin(std::fabs(mouse_pos.y - image.p_min.y), ObjectType::ImageTop, 0, 0);
+                        updateMin(std::fabs(mouse_pos.y - image.p_max.y), ObjectType::ImageBottom, 0, 0);
+                    }
+                    if (image.p_min.y < mouse_pos.y && mouse_pos.y < image.p_max.y) {
+                        updateMin(std::fabs(mouse_pos.x - image.p_min.x), ObjectType::ImageLeft, 0, 0);
+                        updateMin(std::fabs(mouse_pos.x - image.p_max.x), ObjectType::ImageRight, 0, 0);
+                    }
+                }
+                if (min_dis < line_threshold) return;
+
+                // path
+                min_dis = std::numeric_limits<float>::max();
+
+                for (size_t i = 0; i < paths.size(); i++) {
+                    std::vector<CubicSplineTest::WorldSpace> points;
+                    for (const auto& point : paths[i].points) {
+                        points.push_back({point.x, point.y, 0.0f});
+                    }
+                    if (paths[i].is_closed) {
+                        points.push_back(points[0]);
+                    }
+
+                    CubicSplineTest::CubicBezierPath bezier_path(&points[0], (int)points.size());
+                    auto solution = bezier_path.ClosestPointToPath({mouse_pos.x, mouse_pos.y, 0.0f}, &solver);
+                    updateMin(L2Distance({solution.x, solution.y}, mouse_pos), ObjectType::Path, i, 0);
+
+                    // handle collinear
+                    for (size_t j = 0; j + 3 < points.size(); j += 3) {
+                        const float p0x = points[j].x, p0y = points[j].y;
+                        const float p1x = points[j+1].x, p1y = points[j+1].y;
+                        const float p2x = points[j+2].x, p2y = points[j+2].y;
+                        const float p3x = points[j+3].x, p3y = points[j+3].y;
+                        const float px = mouse_pos.x, py = mouse_pos.y;
+                        // collinear
+                        if (std::fabs((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
+                            && std::fabs((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
+                            float cross = (p3x - p0x) * (px - p0x) + (p3y - p0y) * (py - p0y);
+                            if (cross < 0) continue;
+                            float d2 = (p3x - p0x) * (p3x - p0x) + (p3y - p0y) * (p3y - p0y);
+                            if (cross > d2) continue;
+                            float r = cross / d2;
+                            updateMin(std::hypot(p0x+(p3x-p0x)*r-px, p0y+(p3y-p0y)*r-py), ObjectType::Path, i, 0);
+                        }
+                    }
+                }
+                if (min_dis < line_threshold) return;
+
+                // image
+                for (int i = static_cast<int>(images.size()) - 1; i >= 0; i--) {
+                    if ((images[i].p_min.x <= mouse_pos.x && mouse_pos.x <= images[i].p_max.x)
+                        && (images[i].p_min.y <= mouse_pos.y && mouse_pos.y <= images[i].p_max.y)) {
+                        hovered_type = ObjectType::Image;
+                        hovered_image_idx = i;
+                        return;
+                    }
+                }
+                hovered_type = ObjectType::None;
+            };
+            static auto undo = [] {
+                const size_t prev_paths_size = paths.size();
+                const size_t prev_images_size = images.size();
+                history.undo(paths, images);
+                if (paths.size() != prev_paths_size || images.size() != prev_images_size) {
+                    selected_type = ObjectType::None;
+                }
+                update_hovered();
+            };
+            static auto redo = [] {
+                const size_t prev_paths_size = paths.size();
+                const size_t prev_images_size = images.size();
+                history.redo(paths, images);
+                if (paths.size() != prev_paths_size || images.size() != prev_images_size) {
+                    selected_type = ObjectType::None;
+                }
+                update_hovered();
+            };
+
+            static auto update_history = [] {
+                history.push_back(paths, images);
+            };
+            static auto cut = [] {
+                if (selected_type == ObjectType::None) {
+                    return;
+                }
+                if (selected_type == ObjectType::Path) {
+                    clipboard.objectType = selected_type;
+                    clipboard.path = paths[selected_path_idx];
+                    paths.erase(paths.begin() + (long long)selected_path_idx);
+                    selected_type = ObjectType::None;
+                    update_hovered();
+                    update_history();
+                    return;
+                }
+                if (selected_type == ObjectType::Image) {
+                    clipboard.objectType = selected_type;
+                    clipboard.image = images[selected_image_idx];
+                    images.erase(images.begin() + (long long)selected_image_idx);
+                    selected_type = ObjectType::None;
+                    update_hovered();
+                    update_history();
+                    return;
+                }
+            };
+            static auto copy = [] {
+                if (selected_type == ObjectType::None) {
+                    return;
+                }
+                if (selected_type == ObjectType::Path) {
+                    clipboard.objectType = selected_type;
+                    clipboard.path = paths[selected_path_idx];
+                    return;
+                }
+                if (selected_type == ObjectType::Image) {
+                    clipboard.objectType = selected_type;
+                    clipboard.image = images[selected_image_idx];
+                    return;
+                }
+            };
+            static auto paste = [] {
+                if (clipboard.objectType == ObjectType::None) {
+                    return;
+                }
+                if (clipboard.objectType == ObjectType::Path) {
+                    paths.emplace_back(clipboard.path);
+                    selected_type = clipboard.objectType;
+                    selected_path_idx = paths.size() - 1;
+                    update_history();
+                    return;
+                }
+                if (clipboard.objectType == ObjectType::Image) {
+                    images.emplace_back(clipboard.image);
+                    selected_type = clipboard.objectType;
+                    selected_image_idx = images.size()-1;
+                    update_history();
+                    return;
+                }
+            };
 
             auto insert_image = []() {
                 static char const * filterPatterns[2] = { "*.jpg", "*.png" };
@@ -263,7 +514,7 @@ namespace CFSUI::PathEditor {
                 // edit undo
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE907")) {
-
+                    undo();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"撤销");
@@ -272,7 +523,7 @@ namespace CFSUI::PathEditor {
                 // edit redo
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE908")) {
-
+                    redo();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"重做");
@@ -282,7 +533,7 @@ namespace CFSUI::PathEditor {
                 // edit cut
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE903")) {
-
+                    cut();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"剪切");
@@ -291,7 +542,7 @@ namespace CFSUI::PathEditor {
                 // edit copy
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE904")) {
-
+                    copy();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"复制");
@@ -300,7 +551,7 @@ namespace CFSUI::PathEditor {
                 // edit paste
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE905")) {
-
+                    paste();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"粘贴");
@@ -324,7 +575,7 @@ namespace CFSUI::PathEditor {
                 // insert path
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE90A")) {
-
+                    insert_path();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"插入路径");
@@ -333,7 +584,7 @@ namespace CFSUI::PathEditor {
                 // insert image
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE90B")) {
-
+                    insert_image();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"插入图片");
@@ -399,8 +650,6 @@ namespace CFSUI::PathEditor {
 
 
             // Draw border and background color
-            ImGuiIO &io = ImGui::GetIO();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(229, 229, 229, 255));
             draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
 
@@ -418,7 +667,6 @@ namespace CFSUI::PathEditor {
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
             const bool is_mouse_scrolled = is_hovered && (io.MouseWheel != 0);
-            const ImVec2 mouse_pos((io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling);
 
             // keyboard status
             const bool is_keyboard_undo = io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_Z]);
@@ -437,32 +685,7 @@ namespace CFSUI::PathEditor {
             static float curve_thickness = 2.0f;
             static float handle_thickness = 2.0f;
             static float bounding_thickness = 2.0f;
-            // TODO: use better name
-            static const float point_threshold = 8.0f; // distance point_threshold for hovering
-            static const float line_threshold = 4.0f;
 
-            // hover and select----------------------
-            static ObjectType hovered_type = ObjectType::None;
-            static size_t hovered_path_idx = 0;
-            static size_t hovered_point_idx = 0;
-            static size_t hovered_image_idx = 0;
-
-            static ObjectType selected_type = ObjectType::None;
-            static size_t selected_path_idx = 0;
-            static size_t selected_point_idx = 0;
-            static size_t selected_image_idx = 0;
-            static bool has_prev = false;
-            static size_t prev_p0_idx = 0;
-            static size_t prev_p1_idx = 0;
-            static size_t prev_p2_idx = 0;
-            static bool has_next = false;
-            static size_t next_p3_idx = 0;
-
-            static std::vector<ImVec2*> moving_points_ptr;
-            static float moving_distance = 0.f;
-            static const float moving_threshold = 0.1f;
-
-            static bool draw_big_start_point = false;
 
             // state machine
 
@@ -666,143 +889,6 @@ namespace CFSUI::PathEditor {
                 hovered_point_idx = 0;
                 update_selected();
             };
-            static auto update_hovered = [&mouse_pos] {
-                float min_dis = std::numeric_limits<float>::max();
-                auto updateMin = [&min_dis](float dis, ObjectType type, size_t path_idx, size_t point_idx) {
-                    if (dis < min_dis) {
-                        min_dis = dis;
-                        hovered_type = type;
-                        hovered_path_idx = path_idx;
-                        hovered_point_idx = point_idx;
-                    }
-                };
-                // get the nearest point
-                if (!preview_mode) {
-                    // nearest ctrl point
-                    if (selected_type == ObjectType::PathPoint) {
-                        const auto& points = paths[selected_path_idx].points;
-                        if (has_prev) {
-                            updateMin(L2Distance(points[prev_p1_idx], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, prev_p1_idx);
-                            updateMin(L2Distance(points[prev_p2_idx], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, prev_p2_idx);
-                        }
-                        if (has_next) {
-                            updateMin(L2Distance(points[selected_point_idx+1], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx + 1);
-                            updateMin(L2Distance(points[selected_point_idx+2], mouse_pos), ObjectType::CtrlPoint, selected_path_idx, selected_point_idx + 2);
-                        }
-                    }
-                    // path point
-                    for (size_t i = 0; i < paths.size(); i++) {
-                        if (selected_type == ObjectType::Path && selected_path_idx == i) continue;
-                        const auto& points = paths[i].points;
-                        for (size_t j = 0; j < points.size(); j += 3) {
-                            updateMin(L2Distance(points[j], mouse_pos), ObjectType::PathPoint, i, j);
-                        }
-                    }
-                    if (min_dis < point_threshold) return;
-                }
-
-
-                // resizing path point
-                min_dis = std::numeric_limits<float>::max();
-                if (selected_type == ObjectType::Path) {
-                    const auto& path = paths[selected_path_idx];
-                    updateMin(L2Distance(path.p_min, mouse_pos), ObjectType::PathTopLeft, 0, 0);
-                    updateMin(L2Distance(path.p_max, mouse_pos), ObjectType::PathBottomRight, 0, 0);
-                    updateMin(L2Distance({path.p_max.x, path.p_min.y}, mouse_pos), ObjectType::PathTopRight, 0, 0);
-                    updateMin(L2Distance({path.p_min.x, path.p_max.y}, mouse_pos), ObjectType::PathBottomLeft, 0, 0);
-                }
-                if (min_dis < point_threshold) return;
-
-                // resizing path handle
-                min_dis = std::numeric_limits<float>::max();
-                if (selected_type == ObjectType::Path) {
-                    const auto& path = paths[selected_path_idx];
-                    if (path.p_min.x < mouse_pos.x && mouse_pos.x < path.p_max.x) {
-                        updateMin(std::fabs(mouse_pos.y - path.p_min.y), ObjectType::PathTop, 0, 0);
-                        updateMin(std::fabs(mouse_pos.y - path.p_max.y), ObjectType::PathBottom, 0, 0);
-                    }
-                    if (path.p_min.y < mouse_pos.y && mouse_pos.y < path.p_max.y) {
-                        updateMin(std::fabs(mouse_pos.x - path.p_min.x), ObjectType::PathLeft, 0, 0);
-                        updateMin(std::fabs(mouse_pos.x - path.p_max.x), ObjectType::PathRight, 0, 0);
-                    }
-                }
-                if (min_dis < line_threshold) return;
-
-
-                // resizing image point
-                min_dis = std::numeric_limits<float>::max();
-                if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
-                    const auto& image = images[selected_image_idx];
-                    updateMin(L2Distance(image.p_min, mouse_pos), ObjectType::ImageTopLeft, 0, 0);
-                    updateMin(L2Distance(image.p_max, mouse_pos), ObjectType::ImageBottomRight, 0, 0);
-                    updateMin(L2Distance({image.p_max.x, image.p_min.y}, mouse_pos), ObjectType::ImageTopRight, 0, 0);
-                    updateMin(L2Distance({image.p_min.x, image.p_max.y}, mouse_pos), ObjectType::ImageBottomLeft, 0, 0);
-                }
-                if (min_dis < point_threshold) return;
-
-                // resizing image handle
-                min_dis = std::numeric_limits<float>::max();
-                if (selected_type == ObjectType::Image && !images[selected_image_idx].locked) {
-                    const auto& image = images[selected_image_idx];
-                    if (image.p_min.x < mouse_pos.x && mouse_pos.x < image.p_max.x) {
-                        updateMin(std::fabs(mouse_pos.y - image.p_min.y), ObjectType::ImageTop, 0, 0);
-                        updateMin(std::fabs(mouse_pos.y - image.p_max.y), ObjectType::ImageBottom, 0, 0);
-                    }
-                    if (image.p_min.y < mouse_pos.y && mouse_pos.y < image.p_max.y) {
-                        updateMin(std::fabs(mouse_pos.x - image.p_min.x), ObjectType::ImageLeft, 0, 0);
-                        updateMin(std::fabs(mouse_pos.x - image.p_max.x), ObjectType::ImageRight, 0, 0);
-                    }
-                }
-                if (min_dis < line_threshold) return;
-
-                // path
-                min_dis = std::numeric_limits<float>::max();
-
-                for (size_t i = 0; i < paths.size(); i++) {
-                    std::vector<CubicSplineTest::WorldSpace> points;
-                    for (const auto& point : paths[i].points) {
-                        points.push_back({point.x, point.y, 0.0f});
-                    }
-                    if (paths[i].is_closed) {
-                        points.push_back(points[0]);
-                    }
-
-                    CubicSplineTest::CubicBezierPath bezier_path(&points[0], (int)points.size());
-                    auto solution = bezier_path.ClosestPointToPath({mouse_pos.x, mouse_pos.y, 0.0f}, &solver);
-                    updateMin(L2Distance({solution.x, solution.y}, mouse_pos), ObjectType::Path, i, 0);
-
-                    // handle collinear
-                    for (size_t j = 0; j + 3 < points.size(); j += 3) {
-                        const float p0x = points[j].x, p0y = points[j].y;
-                        const float p1x = points[j+1].x, p1y = points[j+1].y;
-                        const float p2x = points[j+2].x, p2y = points[j+2].y;
-                        const float p3x = points[j+3].x, p3y = points[j+3].y;
-                        const float px = mouse_pos.x, py = mouse_pos.y;
-                        // collinear
-                        if (std::fabs((p1x-p0x)*(p3y-p0y) - (p3x-p0x)*(p1y-p0y)) < collinear_eps
-                            && std::fabs((p2x-p0x)*(p3y-p0y) - (p3x-p0x)*(p2y-p0y)) < collinear_eps) {
-                            float cross = (p3x - p0x) * (px - p0x) + (p3y - p0y) * (py - p0y);
-                            if (cross < 0) continue;
-                            float d2 = (p3x - p0x) * (p3x - p0x) + (p3y - p0y) * (p3y - p0y);
-                            if (cross > d2) continue;
-                            float r = cross / d2;
-                            updateMin(std::hypot(p0x+(p3x-p0x)*r-px, p0y+(p3y-p0y)*r-py), ObjectType::Path, i, 0);
-                        }
-                    }
-                }
-                if (min_dis < line_threshold) return;
-
-                // image
-                for (int i = static_cast<int>(images.size()) - 1; i >= 0; i--) {
-                    if ((images[i].p_min.x <= mouse_pos.x && mouse_pos.x <= images[i].p_max.x)
-                    && (images[i].p_min.y <= mouse_pos.y && mouse_pos.y <= images[i].p_max.y)) {
-                        hovered_type = ObjectType::Image;
-                        hovered_image_idx = i;
-                        return;
-                    }
-                }
-                hovered_type = ObjectType::None;
-            };
 
             // set moving context (moving points, mouse moved distance)
             static auto set_moving_context = [] {
@@ -999,80 +1085,6 @@ namespace CFSUI::PathEditor {
                 translate.y += io.MouseDelta.y;
             };
 
-            static auto undo = [] {
-                const size_t prev_paths_size = paths.size();
-                const size_t prev_images_size = images.size();
-                history.undo(paths, images);
-                if (paths.size() != prev_paths_size || images.size() != prev_images_size) {
-                    selected_type = ObjectType::None;
-                }
-                update_hovered();
-            };
-            static auto redo = [] {
-                const size_t prev_paths_size = paths.size();
-                const size_t prev_images_size = images.size();
-                history.redo(paths, images);
-                if (paths.size() != prev_paths_size || images.size() != prev_images_size) {
-                    selected_type = ObjectType::None;
-                }
-                update_hovered();
-            };
-            static auto update_history = [] {
-                history.push_back(paths, images);
-            };
-            static auto cut = [] {
-                if (selected_type == ObjectType::None) {
-                    return;
-                }
-                if (selected_type == ObjectType::Path) {
-                    clipboard.objectType = selected_type;
-                    clipboard.path = paths[selected_path_idx];
-                    paths.erase(paths.begin() + (long long)selected_path_idx);
-                    selected_type = ObjectType::None;
-                    update_hovered();
-                    return;
-                }
-                if (selected_type == ObjectType::Image) {
-                    clipboard.objectType = selected_type;
-                    clipboard.image = images[selected_image_idx];
-                    images.erase(images.begin() + (long long)selected_image_idx);
-                    selected_type = ObjectType::None;
-                    update_hovered();
-                    return;
-                }
-            };
-            static auto copy = [] {
-                if (selected_type == ObjectType::None) {
-                    return;
-                }
-                if (selected_type == ObjectType::Path) {
-                    clipboard.objectType = selected_type;
-                    clipboard.path = paths[selected_path_idx];
-                    return;
-                }
-                if (selected_type == ObjectType::Image) {
-                    clipboard.objectType = selected_type;
-                    clipboard.image = images[selected_image_idx];
-                    return;
-                }
-            };
-            static auto paste = [] {
-                if (clipboard.objectType == ObjectType::None) {
-                    return;
-                }
-                if (clipboard.objectType == ObjectType::Path) {
-                    paths.emplace_back(clipboard.path);
-                    selected_type = clipboard.objectType;
-                    selected_path_idx = paths.size() - 1;
-                    return;
-                }
-                if (clipboard.objectType == ObjectType::Image) {
-                    images.emplace_back(clipboard.image);
-                    selected_type = clipboard.objectType;
-                    selected_image_idx = images.size()-1;
-                    return;
-                }
-            };
 
 
             class TransitionTable {
@@ -1090,9 +1102,9 @@ namespace CFSUI::PathEditor {
                             Normal_s + event<mouse_right_released> [is_blank] / (update_selected, show_context_popup),
                             Normal_s + event<keyboard_undo> / undo,
                             Normal_s + event<keyboard_redo> / redo,
-                            Normal_s + event<keyboard_cut> / (cut, update_history),
+                            Normal_s + event<keyboard_cut> / cut,
                             Normal_s + event<keyboard_copy> / copy,
-                            Normal_s + event<keyboard_paste> / (paste, update_history),
+                            Normal_s + event<keyboard_paste> / paste,
                             Dragging_s + event<mouse_right_released> = Normal_s,
                             Dragging_s + event<mouse_moved> / update_translate,
                             Inserting_s + event<mouse_left_released> [is_inserting_first] / new_node,
@@ -1206,7 +1218,6 @@ namespace CFSUI::PathEditor {
                 }
                 if (ImGui::Selectable("cut")) {
                     cut();
-                    update_history();
                 }
                 if (ImGui::Selectable("copy")) {
                     copy();
@@ -1224,8 +1235,10 @@ namespace CFSUI::PathEditor {
                     state_machine.process_event(clicked_new_path{});
                 }
                 if (ImGui::Selectable(u8"在此粘贴")) {
-                    paste();
                     if (clipboard.objectType == ObjectType::Path) {
+                        paths.emplace_back(clipboard.path);
+                        selected_type = clipboard.objectType;
+                        selected_path_idx = paths.size() - 1;
                         const float dx = mouse_pos.x - clipboard.path.p_min.x;
                         const float dy = mouse_pos.y - clipboard.path.p_min.y;
                         for (auto& point : paths.back().points) {
@@ -1233,7 +1246,10 @@ namespace CFSUI::PathEditor {
                             point.y += dy;
                         }
                     }
-                    if (clipboard.objectType == ObjectType::Image) {
+                    else if (clipboard.objectType == ObjectType::Image) {
+                        images.emplace_back(clipboard.image);
+                        selected_type = clipboard.objectType;
+                        selected_image_idx = images.size()-1;
                         const float dx = mouse_pos.x - clipboard.image.p_min.x;
                         const float dy = mouse_pos.y - clipboard.image.p_min.y;
                         images.back().p_min.x += dx;
