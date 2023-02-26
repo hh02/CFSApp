@@ -229,10 +229,17 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE900")) {
 
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"新建文件");
+            }
+
             // Open file
             ImGui::SameLine();
             if (ImGui::Button(u8"\uE901")) {
 
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"打开文件");
             }
 
             // Save file
@@ -240,11 +247,17 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE902")) {
                 save_file();
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"保存文件");
+            }
 
             // edit cut
             ImGui::SameLine();
             if (ImGui::Button(u8"\uE903")) {
 
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"剪切");
             }
 
             // edit copy
@@ -252,11 +265,17 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE904")) {
 
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"复制");
+            }
 
             // edit paste
             ImGui::SameLine();
             if (ImGui::Button(u8"\uE905")) {
 
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"粘贴");
             }
 
 /*        // edit delete
@@ -271,11 +290,17 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE907")) {
 
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"撤销");
+            }
 
             // edit redo
             ImGui::SameLine();
             if (ImGui::Button(u8"\uE908")) {
 
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"重做");
             }
 
             // new path
@@ -283,11 +308,17 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE909")) {
                 is_clicked_new_path = true;
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"新建路径");
+            }
 
             // insert path
             ImGui::SameLine();
             if (ImGui::Button(u8"\uE90A")) {
 
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"插入路径");
             }
 
             // insert image
@@ -295,15 +326,24 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE90B")) {
 
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"插入图片");
+            }
 
             // Preview mode
             ImGui::SameLine();
             ImGui::Selectable(u8"\uE90C", &preview_mode, ImGuiSelectableFlags_None, {ImGui::GetFontSize(), ImGui::GetFontSize()});
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"预览模式");
+            }
 
             // Generate
             ImGui::SameLine();
             if (ImGui::Button(u8"\uE90D")) {
 
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(u8"生成");
             }
             ImGui::PopStyleColor();
 
