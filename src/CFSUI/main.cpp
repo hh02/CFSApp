@@ -106,7 +106,7 @@ int main(int, char **) {
     builder.BuildRanges(&ranges);
 
     // icon ranges
-    const ImWchar icons_ranges[] = { 0xE900, 0xE901, 0xE902, 0xE903, 0xE904, 0xE905, 0xE906, 0xE907, 0xE908, 0xE909, 0xE90A, 0xE90B};
+    const ImWchar icons_ranges[] = { 0xE900, 0xE901, 0xE902, 0xE903, 0xE904, 0xE905, 0xE906, 0xE907, 0xE908, 0xE909, 0xE90A, 0xE90B, 0xE90C, 0xE90D};
 
     ImFontConfig config;
     config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
@@ -115,8 +115,9 @@ int main(int, char **) {
     icon_config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
     icon_config.MergeMode = true;
 
-    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", 18.0f, &config, ranges.Data);
-    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", 18.0f, &icon_config, icons_ranges);
+    float font_size = 19.0f;
+    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", font_size, &config, ranges.Data);
+    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", font_size, &icon_config, icons_ranges);
     io.Fonts->Build();
 
     // Our state
@@ -131,8 +132,8 @@ int main(int, char **) {
         if (xscale != prev_scale) {
             prev_scale = xscale;
             io.Fonts->Clear();
-            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Regular.otf", xscale * 19.0f, &config, ranges.Data);
-            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", xscale * 18.0f, &icon_config, icons_ranges);
+            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Regular.otf", std::floor(xscale * font_size), &config, ranges.Data);
+            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", std::floor(xscale * font_size), &icon_config, icons_ranges);
             io.Fonts->Build();
             ImGui_ImplOpenGL3_DestroyFontsTexture();
             ImGui_ImplOpenGL3_CreateFontsTexture();

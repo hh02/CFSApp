@@ -135,12 +135,18 @@ namespace CFSUI::PathEditor {
 
             static char* saved_filename {nullptr};
             static bool is_modified {false};
+            static bool preview_mode {false};
+            bool is_clicked_new_path {false};
+
+            // Data
             static std::vector<Path> paths;
             static std::vector<Image> images;
             static History history(10);
             static Clipboard clipboard;
+
+            // Tool
             static CubicSplineTest::ClosestPointSolver solver;
-            bool is_clicked_new_path = false;
+
 
             auto insert_image = []() {
                 static char const * filterPatterns[2] = { "*.jpg", "*.png" };
@@ -223,83 +229,90 @@ namespace CFSUI::PathEditor {
             if (ImGui::Button(u8"\uE900")) {
 
             }
-            ImGui::SameLine();
             // Open file
+            ImGui::SameLine();
             if (ImGui::Button(u8"\uE901")) {
 
             }
-            ImGui::SameLine();
+
             // Save file
+            ImGui::SameLine();
             if (ImGui::Button(u8"\uE902")) {
                 save_file();
             }
-            ImGui::SameLine();
 
             // edit cut
-            if (ImGui::Button(u8"\uE904")) {
-
-            }
             ImGui::SameLine();
-
-            // edit copy
             if (ImGui::Button(u8"\uE903")) {
 
             }
-            ImGui::SameLine();
 
-            // edit paste
-            if (ImGui::Button(u8"\uE906")) {
+            // edit copy
+            ImGui::SameLine();
+            if (ImGui::Button(u8"\uE904")) {
 
             }
+
+            // edit paste
             ImGui::SameLine();
+            if (ImGui::Button(u8"\uE905")) {
+
+            }
 
 /*        // edit delete
-        if (ImGui::Button(u8"\uE905")) {
+        if (ImGui::Button(u8"\uE906")) {
 
         }
         ImGui::SameLine();*/
 
 
             // edit undo
-            if (ImGui::Button(u8"\uE908")) {
-
-            }
             ImGui::SameLine();
-
-            // edit redo
             if (ImGui::Button(u8"\uE907")) {
 
             }
-            ImGui::SameLine();
 
-            // insert image
-            if (ImGui::Button(u8"\uE909")) {
+            // edit redo
+            ImGui::SameLine();
+            if (ImGui::Button(u8"\uE908")) {
 
             }
-            ImGui::SameLine();
 
-            // tool curve
+            // new path
+            ImGui::SameLine();
+            if (ImGui::Button(u8"\uE909")) {
+                is_clicked_new_path = true;
+            }
+
+            // insert path
+            ImGui::SameLine();
             if (ImGui::Button(u8"\uE90A")) {
 
             }
-            ImGui::SameLine();
 
-            // view-visible
+            // insert image
+            ImGui::SameLine();
             if (ImGui::Button(u8"\uE90B")) {
 
             }
 
+            // Preview mode
+            ImGui::SameLine();
+            ImGui::Selectable(u8"\uE90C", &preview_mode, ImGuiSelectableFlags_None, {ImGui::GetFontSize(), ImGui::GetFontSize()});
+
+            // Generate
+            ImGui::SameLine();
+            if (ImGui::Button(u8"\uE90D")) {
+
+            }
             ImGui::PopStyleColor();
-
-            static bool preview_mode = false;
-            ImGui::Checkbox(u8"Preview", &preview_mode);
-
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
             static ImVec4 ctrl_color_vec {0.5f, 0.5f, 0.5f, 1.0f};
             static ImVec4 selected_color_vec {0.0f, 0.6f, 1.0f, 1.0f};
             static ImVec4 hovered_color_vec {0.2f, 0.8f, 1.0f, 1.0f};
 
+/*
             static const ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
             ImGui::Text("Normal color: ");
             ImGui::SameLine();
@@ -316,6 +329,7 @@ namespace CFSUI::PathEditor {
             ImGui::Text("Hovered color: ");
             ImGui::SameLine();
             ImGui::ColorEdit4("EditHoveredColor", (float*)&hovered_color_vec, flags);
+*/
 
             static ImVec2 canvas_p0_prev(0.0f, 0.0f);
             const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
