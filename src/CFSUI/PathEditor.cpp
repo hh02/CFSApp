@@ -167,7 +167,6 @@ namespace CFSUI::PathEditor {
             // moving data
             static std::vector<ImVec2*> moving_points_ptr;
             static float moving_distance = 0.f;
-            static const float moving_threshold = 0.1f;
 
             // some bool
             static bool preview_mode {false};
@@ -177,10 +176,13 @@ namespace CFSUI::PathEditor {
             // Tool
             static CubicSplineTest::ClosestPointSolver solver;
 
-            // thresholds, TODO: use better name
-            static const float point_threshold = 8.0f; // distance point_threshold for hovering
-            static const float line_threshold = 4.0f;
+            // thresholds
+            static const float point_threshold {8.0f}; // distance point_threshold for hovering
+            static const float line_threshold {4.0f}; // distance line_threshold  for hovering
+            static const float moving_threshold {0.1f}; // it's moved only moving distance > moving_threshold
 
+            // tool path size
+            static float tool_path_size {5.0f};
 
             static auto update_hovered = [&mouse_pos] {
                 float min_dis = std::numeric_limits<float>::max();
@@ -451,8 +453,8 @@ namespace CFSUI::PathEditor {
                     is_modified = false;
                 }
             };
-            static float tool_path_size = 5.f;
-            auto generate_spiral = []() {
+
+            auto generate_CFS = []() {
                 PathSampling pathSampling;
                 pathSampling.setImax(200);
                 pathSampling.setStep(tool_path_size);
@@ -475,12 +477,13 @@ namespace CFSUI::PathEditor {
             };
 
             // Path editor's toolbar
-            ImGui::PushStyleColor(ImGuiCol_Button, {255, 255, 255, 0});
             ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit
                     | ImGuiTableFlags_BordersInnerV
 //                    | ImGuiTableFlags_Borders
                     | ImGuiTableFlags_NoHostExtendX;
             if (ImGui::BeginTable("toolbar_table", 5, table_flags)) {
+                ImGui::PushStyleColor(ImGuiCol_Button, {255, 255, 255, 0});
+
                 ImGui::TableNextRow();
 
                 ImGui::TableNextColumn();
@@ -602,14 +605,28 @@ namespace CFSUI::PathEditor {
                 // Generate
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE90D")) {
-
+                    ImGui::OpenPopup(u8"生成 CFS");
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"生成");
                 }
+                ImGui::PopStyleColor();
+
+                if (ImGui::BeginPopupModal(u8"生成 CFS")) {
+                    ImGui::InputFloat(u8"刀具路径大小", &tool_path_size, 0.1f, 1.0f);
+                    if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
+                        ImGui::CloseCurrentPopup();
+                        generate_CFS();
+                    }
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
                 ImGui::EndTable();
             }
-            ImGui::PopStyleColor();
 
 
 
