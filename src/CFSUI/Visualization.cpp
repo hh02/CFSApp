@@ -2,7 +2,7 @@
 #include <iostream>
 namespace CFSUI::Visualization {
     void getPointsFromFile(std::vector<ImVec2>& points) {
-        std::ifstream fin {"./path/-858993460.path", std::ios::in};
+        std::ifstream fin {"./0.path", std::ios::in};
         if (!fin.is_open()) {
             return;
         }
@@ -32,7 +32,7 @@ namespace CFSUI::Visualization {
             refresh_time = ImGui::GetTime();
         }
 
-        double delta = 30.0 / static_cast<double>(points.size()); // animate 30s
+        double delta = 15.0 / static_cast<double>(points.size()); // animate 15s
         delta /= speed;
         while (refresh_time < ImGui::GetTime()) {
             if (curr < points.size()) {

@@ -478,6 +478,7 @@ namespace CFSUI::PathEditor {
                 }
                 file.close();
                 cnc::CFSCNC cfscnc;
+                cfscnc.toolpath_size = tool_path_size;
                 cfscnc.OffsetsBasedCFSLinking("./", true, false);
             };
 

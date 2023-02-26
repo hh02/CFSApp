@@ -84,7 +84,7 @@ namespace cnc {
 		//generate iso level sets
 		/************************************************************************************/
 		rerouting_points_nb = 0;
-		toolpath_size = 5.0;
+//		toolpath_size = 5.0;
 		//SSFC
 		Vector3d3 offsetses;
 		std::vector<int> offset_graph;
@@ -96,7 +96,7 @@ namespace cnc {
 
 		BuildOffsets(boundaries, offsetses, offsets);
 
-		OutputOffsets(path + "offsets.obj", offsets);
+//		OutputOffsets(path + "offsets.obj", offsets);
 
 		if (offsets.size() == 1)
 		{
@@ -1475,7 +1475,7 @@ namespace cnc {
 			}
 		}
 
-		OutputStrips(input_path + "single_path_parts.obj", single_path_parts);
+//		OutputStrips(input_path + "single_path_parts.obj", single_path_parts);
 
 		//add all parts
 		for (int i = 0; i < single_path_parts.size(); i++)
