@@ -121,7 +121,7 @@ namespace CFSUI::PathEditor {
 
     void showPathEditor(bool *p_open) {
         // Fullscreen window flags
-        static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
+        static ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
                                         | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings
                                         | ImGuiWindowFlags_MenuBar;
 
@@ -129,7 +129,7 @@ namespace CFSUI::PathEditor {
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
 
-        if (ImGui::Begin("PathEditor", p_open, flags)) {
+        if (ImGui::Begin("PathEditor", p_open, window_flags)) {
             // Path editor's menu bar
             showMenuBar();
 
@@ -223,129 +223,146 @@ namespace CFSUI::PathEditor {
                 cfscnc.OffsetsBasedCFSLinking("./", true, false);
             };
 
-            // Path editor's tool bar
+            // Path editor's toolbar
             ImGui::PushStyleColor(ImGuiCol_Button, {255, 255, 255, 0});
-            //  New file
-            if (ImGui::Button(u8"\uE900")) {
+            ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit
+                    | ImGuiTableFlags_BordersInnerV
+//                    | ImGuiTableFlags_Borders
+                    | ImGuiTableFlags_NoHostExtendX;
+            if (ImGui::BeginTable("toolbar_table", 5, table_flags)) {
+                ImGui::TableNextRow();
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"新建文件");
-            }
+                ImGui::TableNextColumn();
+                //  New file
+                if (ImGui::Button(u8"\uE900")) {
 
-            // Open file
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE901")) {
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"新建文件");
+                }
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"打开文件");
-            }
+                // Open file
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE901")) {
 
-            // Save file
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE902")) {
-                save_file();
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"保存文件");
-            }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"打开文件");
+                }
 
-            // edit cut
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE903")) {
+                // Save file
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE902")) {
+                    save_file();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"保存文件");
+                }
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"剪切");
-            }
+                ImGui::TableNextColumn();
+                // edit undo
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE907")) {
 
-            // edit copy
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE904")) {
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"撤销");
+                }
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"复制");
-            }
+                // edit redo
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE908")) {
 
-            // edit paste
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE905")) {
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"重做");
+                }
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"粘贴");
-            }
+                ImGui::TableNextColumn();
+                // edit cut
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE903")) {
 
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"剪切");
+                }
+
+                // edit copy
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE904")) {
+
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"复制");
+                }
+
+                // edit paste
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE905")) {
+
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"粘贴");
+                }
 /*        // edit delete
         if (ImGui::Button(u8"\uE906")) {
 
         }
         ImGui::SameLine();*/
 
+                ImGui::TableNextColumn();
+                // new path
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE909")) {
+                    is_clicked_new_path = true;
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"新建路径");
+                }
 
-            // edit undo
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE907")) {
+                // insert path
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE90A")) {
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"撤销");
-            }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"插入路径");
+                }
 
-            // edit redo
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE908")) {
+                // insert image
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE90B")) {
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"重做");
-            }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"插入图片");
+                }
 
-            // new path
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE909")) {
-                is_clicked_new_path = true;
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"新建路径");
-            }
 
-            // insert path
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE90A")) {
+                ImGui::TableNextColumn();
+                // Preview mode
+                ImGui::SameLine();
+                ImGui::Selectable(u8"\uE90C", &preview_mode, ImGuiSelectableFlags_None, {ImGui::GetFontSize(), ImGui::GetFontSize()});
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"预览模式");
+                }
 
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"插入路径");
-            }
+                // Generate
+                ImGui::SameLine();
+                if (ImGui::Button(u8"\uE90D")) {
 
-            // insert image
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE90B")) {
-
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"插入图片");
-            }
-
-            // Preview mode
-            ImGui::SameLine();
-            ImGui::Selectable(u8"\uE90C", &preview_mode, ImGuiSelectableFlags_None, {ImGui::GetFontSize(), ImGui::GetFontSize()});
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"预览模式");
-            }
-
-            // Generate
-            ImGui::SameLine();
-            if (ImGui::Button(u8"\uE90D")) {
-
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(u8"生成");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(u8"生成");
+                }
+                ImGui::EndTable();
             }
             ImGui::PopStyleColor();
+
+
+
+
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
             static ImVec4 ctrl_color_vec {0.5f, 0.5f, 0.5f, 1.0f};
