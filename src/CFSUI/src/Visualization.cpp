@@ -23,11 +23,22 @@ namespace CFSUI::Visualization {
             fin >> tmp;
         }
     }
-    void animateCFS(const std::vector<ImVec2> &points, float speed, bool replay) {
+    void animateCFS(const std::vector<ImVec2> &points, bool is_clicked_generate) {
         auto draw_list = ImGui::GetWindowDrawList();
+
+        bool is_clicked_replay = ImGui::Button("Replay");
+
+        static float speed {1.0f};
+        ImGui::InputFloat("speed", &speed, 0.1f, 1.0f, "%.1f");
+
+        static ImVec4 CFS_color_vec {0.0f, 1.0f, 0.0f, 1.0f};
+        static const ImGuiColorEditFlags color_editor_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
+        ImGui::ColorEdit4("Editor CFS Color", (float*) &CFS_color_vec, color_editor_flags);
+
+
         static size_t curr {0};
         static double refresh_time {ImGui::GetTime()};
-        if (replay) {
+        if (is_clicked_replay || is_clicked_generate) {
             curr = 0;
             refresh_time = ImGui::GetTime();
         }
@@ -47,9 +58,9 @@ namespace CFSUI::Visualization {
         for (size_t i = 0; i < curr; i++) {
             draw_list->PathLineTo({points[i].x+p.x, points[i].y+p.y});
         }
-        static const auto color = IM_COL32(0, 255, 0, 255);
+
         static const auto thickness = 2.0f;
-        draw_list->PathStroke(color, ImDrawFlags_None, thickness);
+        draw_list->PathStroke(ImGui::GetColorU32(CFS_color_vec), ImDrawFlags_None, thickness);
 
     }
 }

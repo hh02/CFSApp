@@ -10,7 +10,7 @@
 
 namespace CFSUI::Visualization {
     void getPointsFromFile(std::vector<ImVec2>& points);
-    void animateCFS(const std::vector<ImVec2> &points, float speed=1.0f, bool replay=false);
+    void animateCFS(const std::vector<ImVec2> &points, bool is_clicked_generate);
 }
 
 #endif //CFSAPP_VISUALIZATION_H

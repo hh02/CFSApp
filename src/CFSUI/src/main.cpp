@@ -151,11 +151,9 @@ int main(int, char **) {
         ImGui::NewFrame();
 
 
-
-
-
-        static bool show_path_editor_window = true;
+        static bool show_path_editor_window {true};
         CFSUI::PathEditor::showPathEditor(&show_path_editor_window);
+
 
         // Rendering
         ImGui::Render();

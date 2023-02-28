@@ -172,7 +172,7 @@ namespace CFSUI::PathEditor {
             // some bool
             static bool preview_mode {false};
             static bool draw_big_start_point {false};
-            bool open_visualization_window {false};
+            bool is_clicked_generate {false};
             bool is_clicked_new_path {false};
 
             // Tool
@@ -623,33 +623,31 @@ namespace CFSUI::PathEditor {
                     if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                         ImGui::CloseCurrentPopup();
                         generate_CFS();
-                        open_visualization_window = true;
+                        is_clicked_generate = true;
                     }
                     ImGui::SetItemDefaultFocus();
                     ImGui::SameLine();
                     if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                         ImGui::CloseCurrentPopup();
-                        open_visualization_window = true;
+                        is_clicked_generate = true;
                     }
                     ImGui::EndPopup();
                 }
                 ImGui::EndTable();
             }
 
-            if (open_visualization_window) {
+            if (is_clicked_generate) {
                 ImGui::OpenPopup(u8"可视化 CFS");
             }
+
             // Visualization Window modal
             if (ImGui::BeginPopupModal(u8"可视化 CFS")) {
                 if (ImGui::Button("Close")) {
                     ImGui::CloseCurrentPopup();
-                    open_visualization_window = false;
                 }
-                bool is_replay = ImGui::Button("Replay");
-                static float speed = 1.0f;
-                ImGui::InputFloat("speed", &speed, 0.1f, 1.0f);
+
                 Visualization::getPointsFromFile(CFS_points);
-                Visualization::animateCFS(CFS_points, speed, is_replay || open_visualization_window);
+                Visualization::animateCFS(CFS_points, is_clicked_generate);
 
                 ImGui::EndPopup();
             }
