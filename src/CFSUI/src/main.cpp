@@ -116,7 +116,7 @@ int main(int, char **) {
     icon_config.MergeMode = true;
 
     float font_size = 19.0f;
-    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Normal.otf", font_size, &config, ranges.Data);
+    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Regular.otf", font_size, &config, ranges.Data);
     io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", font_size, &icon_config, icons_ranges);
     io.Fonts->Build();
 
