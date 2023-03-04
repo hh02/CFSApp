@@ -26,10 +26,6 @@ static void glfw_error_callback(int error, const char *description) {
 }
 
 
-void loadFont() {
-
-}
-
 int main(int, char **) {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -116,14 +112,13 @@ int main(int, char **) {
     icon_config.MergeMode = true;
 
     float font_size = 19.0f;
-    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Regular.otf", font_size, &config, ranges.Data);
-    io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", font_size, &icon_config, icons_ranges);
-    io.Fonts->Build();
+    const char* text_font_path = "fonts/SourceHanSansCN-Regular.otf";
+    const char* icon_font_path = "fonts/icomoon.ttf";
 
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    float prev_scale = 1.0f;
+    float prev_scale = 0.0f;
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         // dpi
@@ -132,8 +127,8 @@ int main(int, char **) {
         if (xscale != prev_scale) {
             prev_scale = xscale;
             io.Fonts->Clear();
-            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/SourceHanSansCN-Regular.otf", std::floor(xscale * font_size), &config, ranges.Data);
-            io.Fonts->AddFontFromFileTTF("c:/dev/fonts/icomoon.ttf", std::floor(xscale * font_size), &icon_config, icons_ranges);
+            io.Fonts->AddFontFromFileTTF(text_font_path, std::floor(xscale * font_size), &config, ranges.Data);
+            io.Fonts->AddFontFromFileTTF(icon_font_path, std::floor(xscale * font_size), &icon_config, icons_ranges);
             io.Fonts->Build();
             ImGui_ImplOpenGL3_DestroyFontsTexture();
             ImGui_ImplOpenGL3_CreateFontsTexture();

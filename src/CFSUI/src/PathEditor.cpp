@@ -58,68 +58,6 @@ namespace CFSUI::PathEditor {
         return {point.x*scaling+translate.x, point.y*scaling+translate.y};
     }
 
-    void showMenuBar() {
-        // MenuBar
-        if (ImGui::BeginMenuBar()) {
-            if (ImGui::BeginMenu(u8"文件")) {
-                if (ImGui::MenuItem(u8"新建", "Ctrl+N")) {
-
-                }
-                if (ImGui::MenuItem(u8"打开", "Ctrl+O")) {
-
-                }
-                if (ImGui::MenuItem(u8"保存", "Ctrl+S")) {
-
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem(u8"退出", "Alt+F4")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(u8"编辑")) {
-                if (ImGui::MenuItem(u8"撤销", "Ctrl+Z")) {
-
-                }
-                if (ImGui::MenuItem(u8"重做", "Ctrl+Y")) {
-
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem(u8"剪切", "Ctrl+X")) {
-
-                }
-                if (ImGui::MenuItem(u8"复制", "Ctrl+C")) {
-
-                }
-                if (ImGui::MenuItem(u8"粘贴", "Ctrl+V")) {
-
-                }
-                if (ImGui::MenuItem(u8"删除", "Delete")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(u8"插入")) {
-                if (ImGui::MenuItem(u8"图片")) {
-
-                }
-                if (ImGui::MenuItem(u8"路径")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(u8"帮助")) {
-                if (ImGui::MenuItem(u8"关于")) {
-
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-        }
-    }
-
-
-
     void showPathEditor(bool *p_open) {
         // Fullscreen window flags
         static ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
@@ -131,9 +69,6 @@ namespace CFSUI::PathEditor {
         ImGui::SetNextWindowSize(viewport->Size);
 
         if (ImGui::Begin("PathEditor", p_open, window_flags)) {
-            // Path editor's menu bar
-            showMenuBar();
-
             static char* saved_filename {nullptr};
             static bool is_modified {false};
 
@@ -172,7 +107,8 @@ namespace CFSUI::PathEditor {
             // some bool
             static bool preview_mode {false};
             static bool draw_big_start_point {false};
-            bool is_clicked_generate {false};
+            bool is_opening_generate {false};
+            bool is_opening_visualize {false};
             bool is_clicked_new_path {false};
 
             // Tool
@@ -482,6 +418,78 @@ namespace CFSUI::PathEditor {
                 cfscnc.OffsetsBasedCFSLinking("./", true, false);
             };
 
+            // Path editor's menu bar
+            if (ImGui::BeginMenuBar()) {
+                if (ImGui::BeginMenu(u8"文件")) {
+                    if (ImGui::MenuItem(u8"新建", "Ctrl+N")) {
+
+                    }
+                    if (ImGui::MenuItem(u8"打开", "Ctrl+O")) {
+
+                    }
+                    if (ImGui::MenuItem(u8"保存", "Ctrl+S")) {
+
+                    }
+                    ImGui::Separator();
+                    if (ImGui::MenuItem(u8"退出", "Alt+F4")) {
+
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(u8"编辑")) {
+                    if (ImGui::MenuItem(u8"撤销", "Ctrl+Z")) {
+                        undo();
+                    }
+                    if (ImGui::MenuItem(u8"重做", "Ctrl+Y")) {
+                        redo();
+                    }
+                    ImGui::Separator();
+                    if (ImGui::MenuItem(u8"剪切", "Ctrl+X")) {
+                        cut();
+                    }
+                    if (ImGui::MenuItem(u8"复制", "Ctrl+C")) {
+                        copy();
+                    }
+                    if (ImGui::MenuItem(u8"粘贴", "Ctrl+V")) {
+                        paste();
+                    }
+                    if (ImGui::MenuItem(u8"删除", "Delete")) {
+                        if (selected_type == ObjectType::Path) {
+                            paths.erase(paths.begin() + static_cast<long long>(selected_path_idx));
+                        }
+                        else if (selected_type == ObjectType::Image) {
+                            images.erase(images.begin() + static_cast<long long>(selected_image_idx));
+                        }
+                        selected_type = ObjectType::None;
+                        update_hovered();
+                        update_history();
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(u8"插入")) {
+                    if (ImGui::MenuItem(u8"图片")) {
+                        insert_image();
+                    }
+                    if (ImGui::MenuItem(u8"路径")) {
+                        insert_path();
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(u8"生成")) {
+                    if (ImGui::MenuItem(u8"生成 CFS")) {
+                        is_opening_generate = true;
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(u8"帮助")) {
+                    if (ImGui::MenuItem(u8"关于")) {
+
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenuBar();
+            }
+
             // Path editor's toolbar
             ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit
                     | ImGuiTableFlags_BordersInnerV
@@ -611,32 +619,42 @@ namespace CFSUI::PathEditor {
                 // Generate
                 ImGui::SameLine();
                 if (ImGui::Button(u8"\uE90D")) {
-                    ImGui::OpenPopup(u8"生成 CFS");
+                    is_opening_generate = true;
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(u8"生成");
                 }
+
                 ImGui::PopStyleColor();
 
-                if (ImGui::BeginPopupModal(u8"生成 CFS")) {
-                    ImGui::InputFloat(u8"刀具路径大小", &tool_path_size, 0.1f, 1.0f);
-                    if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
-                        ImGui::CloseCurrentPopup();
-                        generate_CFS();
-                        is_clicked_generate = true;
-                    }
-                    ImGui::SetItemDefaultFocus();
-                    ImGui::SameLine();
-                    if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
-                        ImGui::CloseCurrentPopup();
-                        is_clicked_generate = true;
-                    }
-                    ImGui::EndPopup();
-                }
                 ImGui::EndTable();
             }
 
-            if (is_clicked_generate) {
+
+
+            if (is_opening_generate) {
+                ImGui::OpenPopup(u8"生成 CFS");
+            }
+
+
+            if (ImGui::BeginPopupModal(u8"生成 CFS")) {
+                ImGui::InputFloat(u8"刀具路径大小", &tool_path_size, 0.1f, 1.0f);
+                if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
+                    ImGui::CloseCurrentPopup();
+                    generate_CFS();
+                    is_opening_visualize = true;
+                }
+                ImGui::SetItemDefaultFocus();
+                ImGui::SameLine();
+                if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
+                    ImGui::CloseCurrentPopup();
+                    is_opening_visualize = true;
+                }
+                ImGui::EndPopup();
+            }
+
+
+            if (is_opening_visualize) {
                 ImGui::OpenPopup(u8"可视化 CFS");
             }
 
@@ -647,7 +665,7 @@ namespace CFSUI::PathEditor {
                 }
 
                 Visualization::getPointsFromFile(CFS_points);
-                Visualization::animateCFS(CFS_points, is_clicked_generate);
+                Visualization::animateCFS(CFS_points, is_opening_visualize);
 
                 ImGui::EndPopup();
             }
