@@ -104,7 +104,7 @@ namespace cnc {
 		}
 
 
-		if (!std::ifstream(input_path + "path/" + IntString(cfs_index) + ".path", std::ios::in) || re_running)
+		if (!std::ifstream(input_path + "output.path", std::ios::in) || re_running)
 		{
 			//build offset graph
 			//Assign edge weight
@@ -184,36 +184,15 @@ namespace cnc {
 				{
 					std::cerr << "Error...407" << std::endl;
 				}
-
-				if (true)
-				{
-					/*
-					Vector3d1 vecs;
-					CGAL_3D_Neareast_Point_Mesh(path + "\\" + IntString(cfs_index) + ".off", single_path, vecs);
-					Vector3d1().swap(single_path);
-					single_path = vecs;
-					Vector3d1().swap(vecs);
-					*/
-
-					//OutputOffsets(input_path + "\\path\\" + IntString(cfs_index) + ".obj", single_path);
-
-					//Output_Path(input_path + "\\path\\" + IntString(cfs_index) + ".path");
-					//Output_Obj_Cur_Normals(input_path + "\\path\\" + IntString(cfs_index) + "_normals_curs.data");
-				}
 			}
 
 			single_paths.push_back(single_path);
-			std::ofstream file("D:\\CNCProduction\\Release\\path_optimization_usage_shiqing\\filelist.txt");
-			file << path +"\\path\\"+ IntString(cfs_index) + "_split.obj" << std::endl;
-			file.clear();
-			file.close();
-
 			DWORD end_time = GetTickCount();
 			std::cout << "[TIME] tool path generation times " << (end_time - start_time) / 1000.0 << std::endl;
 		}
 		else
 		{
-			Load_Path(input_path + "path/" + IntString(cfs_index) + ".path");
+			Load_Path(input_path + "output.path");
 			single_paths.push_back(single_path);
 		}
 
@@ -2383,49 +2362,44 @@ namespace cnc {
 
 		double scale = max_y - min_y > max_x - min_x ? max_y - min_y : max_x - min_x;
 
-		for (int i = 0; i < input_boundaries.size(); i++)
-		{
-			for (int j = 0; j < input_boundaries[i].size(); j++)
-			{
-				input_boundaries[i][j][0] = input_boundaries[i][j][0] - boundary_center[0];
-				input_boundaries[i][j][1] = input_boundaries[i][j][1] - boundary_center[1];
-				input_boundaries[i][j][0] = input_boundaries[i][j][0] / scale * 100;
-				input_boundaries[i][j][1] = input_boundaries[i][j][1] / scale * 100;
-			}
-		}
-
+        for (auto& boundary : input_boundaries) {
+            for (auto& point : boundary) {
+                point[0] = (point[0] - boundary_center[0]) / scale * 100;
+                point[1] = (point[1] - boundary_center[1]) / scale * 100;
+            }
+        }
 
 		//insert more points;
 		for (int i = 0; i < input_boundaries.size(); i++)
 		{
-			Vector3d1 one_boudary;
+			Vector3d1 one_boundary;
 
 			for (int j = 0; j < input_boundaries[i].size(); j++)
 			{
 				Vector3d v0 = input_boundaries[i][j];
 				Vector3d v1 = input_boundaries[i][(j + 1) % input_boundaries[i].size()];
 
-				double lenght = CGAL_3D_Distance_Point_Point(v0, v1);
+				double length = CGAL_3D_Distance_Point_Point(v0, v1);
 
-				if (lenght > toolpath_size)
+				if (length > toolpath_size)
 				{
-					int insert_nb = (int)(lenght / toolpath_size) * 5;
+					int insert_nb = (int)(length / toolpath_size) * 5;
 
 					for (int k = 0; k < insert_nb; k++)
 					{
 						float d = (float)(k + 1) / (float)(insert_nb + 1);
 
-						one_boudary.push_back((float)(1.0 - d)*v0 + d*v1);
+						one_boundary.push_back((float)(1.0 - d) * v0 + d * v1);
 					}
 				}
 
-				one_boudary.push_back(v1);
+				one_boundary.push_back(v1);
 
 			}
 
 			Vector3d1().swap(input_boundaries[i]);
 
-			input_boundaries[i] = one_boudary;
+			input_boundaries[i] = one_boundary;
 		}
 
 	}

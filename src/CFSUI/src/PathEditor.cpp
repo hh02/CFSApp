@@ -108,7 +108,7 @@ namespace CFSUI::PathEditor {
             static bool preview_mode {false};
             static bool draw_big_start_point {false};
             bool is_opening_generate {false};
-            bool is_opening_visualize {false};
+            bool is_opening_visualization {false};
             bool is_clicked_new_path {false};
 
             // Tool
@@ -642,33 +642,26 @@ namespace CFSUI::PathEditor {
                 if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                     ImGui::CloseCurrentPopup();
                     generate_CFS();
-                    is_opening_visualize = true;
+                    is_opening_visualization = true;
                 }
                 ImGui::SetItemDefaultFocus();
                 ImGui::SameLine();
                 if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                     ImGui::CloseCurrentPopup();
-                    is_opening_visualize = true;
+                    is_opening_visualization = true;
                 }
                 ImGui::EndPopup();
             }
 
 
-            if (is_opening_visualize) {
+            if (is_opening_visualization) {
+                Visualization::getPointsFromFile(CFS_points);
                 ImGui::OpenPopup(u8"可视化 CFS");
             }
 
-            // Visualization Window modal
-            if (ImGui::BeginPopupModal(u8"可视化 CFS")) {
-                if (ImGui::Button("Close")) {
-                    ImGui::CloseCurrentPopup();
-                }
+            Visualization::showVisualization(CFS_points, tool_path_size);
 
-                Visualization::getPointsFromFile(CFS_points);
-                Visualization::animateCFS(CFS_points, is_opening_visualize);
 
-                ImGui::EndPopup();
-            }
 
 
             static ImVec4 normal_color_vec{0.0f, 0.0f, 0.0f, 1.0f};
@@ -710,7 +703,7 @@ namespace CFSUI::PathEditor {
             draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
 
             // This will catch our interactions
-            ImGui::InvisibleButton("canvas", canvas_sz,
+            ImGui::InvisibleButton("path_editor_invisible_button", canvas_sz,
                                    ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             const bool is_hovered = ImGui::IsItemHovered(); // Hovered
             const bool is_active = ImGui::IsItemActive();   // Held
