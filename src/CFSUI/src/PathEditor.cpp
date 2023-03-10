@@ -618,7 +618,7 @@ namespace CFSUI::PathEditor {
 
                 // Generate
                 ImGui::SameLine();
-                if (ImGui::Button(u8"\uE90D")) {
+                if (ImGui::Button(u8"\uE906")) {
                     is_opening_generate = true;
                 }
                 if (ImGui::IsItemHovered()) {

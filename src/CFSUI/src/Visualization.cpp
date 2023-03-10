@@ -67,7 +67,7 @@ namespace CFSUI::Visualization {
     }
 
     ImVec2 translate {0.0f, 0.0f};
-    float scaling {1.0f};
+    float scaling {5.0f};
 
     inline ImVec2 transform(const ImVec2& point) {
         return {point.x*scaling+translate.x, point.y*scaling+translate.y};
@@ -113,8 +113,13 @@ namespace CFSUI::Visualization {
             canvas_center_prev = canvas_center;
 
             auto draw_list = ImGui::GetWindowDrawList();
+            static ImVec2 pre_point {1e3, 1e3};
             for (size_t i = 0; i < progress; i++) {
+                if (std::pow(points[i].x-pre_point.x, 2)+std::pow(points[i].y-pre_point.y, 2) < tool_path_size/2) {
+                    continue;
+                }
                 draw_list->PathLineTo(transform(points[i]));
+                pre_point = points[i];
 //                draw_list->AddCircleFilled(transform(points[i]), siz*scaling/2.0, IM_COL32(0, 0, 0, 80));
             }
             draw_list->PathStroke(IM_COL32(0, 0, 0, 80), ImDrawFlags_None, siz*scaling);
