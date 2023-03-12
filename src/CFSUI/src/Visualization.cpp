@@ -74,55 +74,55 @@ namespace CFSUI::Visualization {
     }
 
     void showVisualization(const std::vector<ImVec2> &points, float tool_path_size) {
-        // Visualization Window modal
-        if (ImGui::BeginPopupModal(u8"可视化 CFS")) {
-            if (ImGui::Button("Close")) {
-                ImGui::CloseCurrentPopup();
+        static float siz {2.0f};
+        ImGui::SliderFloat("visualization tool path size", &siz, 0.f, 10.f);
+        static int progress {0};
+        ImGui::SliderInt("progress slider", &progress, 0, points.size());
+        ImGui::InputInt("progress input", &progress);
+
+        if (points.empty()) {
+            return;
+        }
+
+        ImGuiIO &io = ImGui::GetIO();
+        ImVec2 mouse_pos_rel {(io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling};
+
+        static ImVec2 canvas_center_prev {0.0f, 0.0f};
+        const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+        const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+        const ImVec2 canvas_center {canvas_p0.x + canvas_sz.x / 2.0f, canvas_p0.y + canvas_sz.y / 2.0f};
+
+        ImGui::InvisibleButton("visualization_invisible_button", canvas_sz,
+                               ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            translate.x += io.MouseDelta.x;
+            translate.y += io.MouseDelta.y;
+        }
+
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0) {
+            float c = io.MouseWheel > 0 ? 1.05f : 0.95f;
+            scaling *= c;
+            translate.x = translate.x * c + (1.0f - c) * io.MousePos.x;
+            translate.y = translate.y * c + (1.0f - c) * io.MousePos.y;
+        }
+
+        translate.x += (canvas_center.x - canvas_center_prev.x);
+        translate.y += (canvas_center.y - canvas_center_prev.y);
+        canvas_center_prev = canvas_center;
+
+        auto draw_list = ImGui::GetWindowDrawList();
+        static ImVec2 pre_point {1e3, 1e3};
+        for (size_t i = 0; i < progress; i++) {
+            if (std::pow(points[i].x-pre_point.x, 2)+std::pow(points[i].y-pre_point.y, 2) < tool_path_size/2) {
+                continue;
             }
-            static float siz {2.0f};
-            ImGui::SliderFloat("visualization tool path size", &siz, 0.f, 10.f);
-            static int progress {1000};
-            ImGui::SliderInt("progress slider", &progress, 0, points.size());
-            ImGui::InputInt("progress input", &progress);
-
-            ImGuiIO &io = ImGui::GetIO();
-            ImVec2 mouse_pos_rel {(io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling};
-
-            static ImVec2 canvas_center_prev {0.0f, 0.0f};
-            const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
-            const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
-            const ImVec2 canvas_center {canvas_p0.x + canvas_sz.x / 2.0f, canvas_p0.y + canvas_sz.y / 2.0f};
-
-            ImGui::InvisibleButton("visualization_invisible_button", canvas_sz,
-                                   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-
-            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                translate.x += io.MouseDelta.x;
-                translate.y += io.MouseDelta.y;
-            }
-
-            if (ImGui::IsItemHovered() && io.MouseWheel != 0) {
-                float c = io.MouseWheel > 0 ? 1.05f : 0.95f;
-                scaling *= c;
-                translate.x = translate.x * c + (1.0f - c) * io.MousePos.x;
-                translate.y = translate.y * c + (1.0f - c) * io.MousePos.y;
-            }
-
-            translate.x += (canvas_center.x - canvas_center_prev.x);
-            translate.y += (canvas_center.y - canvas_center_prev.y);
-            canvas_center_prev = canvas_center;
-
-            auto draw_list = ImGui::GetWindowDrawList();
-            static ImVec2 pre_point {1e3, 1e3};
-            for (size_t i = 0; i < progress; i++) {
-                if (std::pow(points[i].x-pre_point.x, 2)+std::pow(points[i].y-pre_point.y, 2) < tool_path_size/2) {
-                    continue;
-                }
-                draw_list->PathLineTo(transform(points[i]));
-                pre_point = points[i];
+            draw_list->PathLineTo(transform(points[i]));
+            pre_point = points[i];
 //                draw_list->AddCircleFilled(transform(points[i]), siz*scaling/2.0, IM_COL32(0, 0, 0, 80));
-            }
-            draw_list->PathStroke(IM_COL32(0, 0, 0, 80), ImDrawFlags_None, siz*scaling);
+        }
+        draw_list->PathStroke(IM_COL32(0, 0, 0, 80), ImDrawFlags_None, siz*scaling);
+
 
 /*
             float min_len {1000000.0f};
@@ -147,7 +147,5 @@ namespace CFSUI::Visualization {
 */
 
 
-            ImGui::EndPopup();
-        }
     }
 }
