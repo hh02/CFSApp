@@ -5,14 +5,14 @@ cmake_minimum_required (VERSION 3.8)
 
 project ("SmartSFC")
 
-# copy asset files
+#[[# copy asset files
 set(asset_directory G)
 set(dst_asset_directory "${CMAKE_BINARY_DIR}/${asset_directory}")
 set(src_asset_directory "${CMAKE_CURRENT_SOURCE_DIR}/${asset_directory}")
 
 file(MAKE_DIRECTORY ${dst_asset_directory})
 file(GLOB all_copy_files "${src_asset_directory}/*")
-file(COPY ${all_copy_files} DESTINATION ${dst_asset_directory})
+file(COPY ${all_copy_files} DESTINATION ${dst_asset_directory})]]
 
 find_package(CGAL CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)

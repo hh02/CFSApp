@@ -79,6 +79,8 @@ namespace CFSUI::Visualization {
         static int progress {0};
         ImGui::SliderInt("progress slider", &progress, 0, points.size());
         ImGui::InputInt("progress input", &progress);
+        static bool showSharpTurns {false};
+        ImGui::Checkbox("Show sharp turns", &showSharpTurns);
 
         if (points.empty()) {
             return;
@@ -124,27 +126,10 @@ namespace CFSUI::Visualization {
         draw_list->PathStroke(IM_COL32(0, 0, 0, 80), ImDrawFlags_None, siz*scaling);
 
 
-/*
-            float min_len {1000000.0f};
-            float max_len {0.0f};
-            for (size_t i = 0; i + 1 < points.size(); i++) {
-                auto len = std::hypot(points[i+1].x-points[i].x, points[i+1].y-points[i].y);
-                min_len = std::min(min_len, len);
-                max_len = std::max(max_len, len);
-            }
-            std::cout << min_len << ", " << max_len << std::endl;
-            exit(0);
-*/
+        // calculate sharp turns (if angle < threshold then it's sharp turn)
+        for (size_t i = 0; i + 2 < points.size(); i++) {
 
-
-/*
-            for (const auto& point : points) {
-                draw_list->PathLineTo(transform(point));
-            }
-
-            ImDrawFlags draw_flags = ImDrawFlags_None;
-            draw_list->PathStroke(ImGui::GetColorU32({0, 1.0f, 0, 0.3f}), draw_flags, siz*scaling);
-*/
+        }
 
 
     }

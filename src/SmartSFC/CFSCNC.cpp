@@ -196,6 +196,10 @@ namespace cnc {
 			single_paths.push_back(single_path);
 		}
 
+
+        // output CFS
+		OutputOffsets(path + "output.obj", single_paths);
+
 		Vector3d3().swap(offsetses);
 		std::vector<int>().swap(offset_graph);
 		std::vector<int>().swap(mst);
