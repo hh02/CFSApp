@@ -1,3 +1,136 @@
+#include <igl/opengl/glfw/Viewer.h>
+#include "MyImGuiPlugin.h"
+#include <igl/opengl/glfw/imgui/ImGuiMenu.h>
+#include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
+#include <imgui.h>
+#include <iostream>
+
+int main(int argc, char *argv[]) {
+    igl::opengl::glfw::Viewer viewer;
+
+    CFSUI::MyImGuiPlugin myImGuiPlugin;
+    viewer.plugins.push_back(&myImGuiPlugin);
+    viewer.launch(true, false, "CFSApp");
+
+/*
+    // Init the viewer
+    igl::opengl::glfw::Viewer viewer;
+
+    // Attach a menu plugin
+    CFSUI::MyImGuiPlugin myImGuiPlugin;
+    viewer.plugins.push_back(&myImGuiPlugin);
+
+    igl::opengl::glfw::imgui::ImGuiMenu menu;
+//    plugin.widgets.push_back(&menu);
+
+
+
+
+    menu.callback_draw_viewer_menu = [&](){
+        menu.draw_viewer_menu();
+
+    };
+
+*/
+/*    menu.callback_draw_viewer_window = [&]() {
+        menu.draw_viewer_window();
+    };*//*
+
+
+    viewer.callback_init = [&](igl::opengl::glfw::Viewer &v) {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        (void) io;
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        // Setup Dear ImGui style
+        // ImGui::StyleColorsDark();
+        ImGui::StyleColorsLight();
+
+
+        // load fonts
+        // Custom Glyph Ranges
+        ImVector<ImWchar> ranges;
+        ImFontGlyphRangesBuilder builder;
+        builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径退出在此预览模式生成取消刀具大小可视化");
+        builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+        builder.BuildRanges(&ranges);
+
+        // icon ranges
+        const ImWchar icons_ranges[] = { 0xE900, 0xE901, 0xE902, 0xE903, 0xE904, 0xE905, 0xE906, 0xE907, 0xE908, 0xE909, 0xE90A, 0xE90B, 0xE90C, 0xE90D};
+
+        // config: merge icon font
+        ImFontConfig icon_config;
+        icon_config.MergeMode = true;
+
+        float font_size = 19.0f;
+        const char *text_font_path = "fonts/SourceHanSansCN-Regular.otf";
+        const char *icon_font_path = "fonts/icomoon.ttf";
+        io.Fonts->AddFontFromFileTTF(text_font_path, 24.0f, nullptr, ranges.Data);
+
+        return false;
+    };
+
+*/
+/*
+    viewer.callback_pre_draw = [&](igl::opengl::glfw::Viewer &v) {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        (void) io;
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        io.Fonts->AddFontFromFileTTF(text_font_path, 24.0f, nullptr, ranges.Data);
+
+        // Setup Dear ImGui style
+        // ImGui::StyleColorsDark();
+        ImGui::StyleColorsLight();
+        return false;
+    };
+*//*
+
+    float pre_scaling = -1.0f;
+    menu.callback_draw_custom_window = [&]() {
+        // Set fonts, TODO: split set font to a new function
+        float scaling = menu.menu_scaling();
+
+*/
+/*
+        if (pre_scaling != scaling) {
+            pre_scaling = scaling;
+            ImGuiIO &io = ImGui::GetIO();
+            io.Fonts->Clear();
+            io.Fonts->AddFontFromFileTTF(text_font_path, std::floor(scaling * font_size), nullptr, ranges.Data);
+            io.Fonts->AddFontFromFileTTF(icon_font_path, std::floor(scaling * font_size), &icon_config, icons_ranges);
+            io.Fonts->Build();
+            ImGui_ImplOpenGL3_DestroyFontsTexture();
+            ImGui_ImplOpenGL3_CreateFontsTexture();
+        }
+*//*
+
+
+
+*/
+/*
+        static bool open_path_editor_window {true};
+        CFSUI::PathEditor::showPathEditor(&open_path_editor_window);
+*//*
+
+
+    };
+
+
+    viewer.launch(true, false, "CFSApp");
+*/
+
+}
+
+
+
+/*
 #define IMGUI_USER_CONFIG "my_imconfig.h"
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
@@ -172,4 +305,4 @@ int main(int, char **) {
     glfwTerminate();
 
     return 0;
-}
+}*/
