@@ -39,9 +39,13 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     }
 
     const float point_distance_threshold{tool_path_size * 0.8f};
-    static int progress{0};
+    static int progress{1000000000};
+    if (progress >= points.size()) {
+        progress = points.size();
+    }
 
-    bool is_clicked_replay{false};
+    bool is_clicked_animate{false};
+    static bool is_animating{false};
     static float speed{1.0f};
     const float thickness {1.0f};
 
@@ -49,14 +53,19 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     static ImVec4 CFS_color_vec {0.0f, 1.0f, 0.0f, 1.0f};
     static ImVec4 CFS_fill_color_vec {0.0f, 1.0f, 1.0f, 0.3f};
 
+    ImGui::SliderInt("progress slider", &progress, 0, static_cast<int>(points.size()));
+
     if (visualization_type == VisualizationType_Default) {
-        is_clicked_replay = ImGui::Button(u8"重放");
+        is_clicked_animate = ImGui::Button(u8"动画");
+        if (is_clicked_animate) {
+            is_animating = true;
+        }
+
         ImGui::InputFloat("speed", &speed, 0.1f, 1.0f, "%.1f");
 
         ImGui::ColorEdit4("Editor CFS Color", (float*) &CFS_color_vec, color_editor_flags);
     }
     else if (visualization_type == VisualizationType_Fill) {
-        ImGui::SliderInt("progress slider", &progress, 0, points.size());
         ImGui::ColorEdit4("Editor CFS Fill Color", (float*) &CFS_fill_color_vec, color_editor_flags);
     }
 
@@ -94,23 +103,27 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     if (visualization_type == VisualizationType_Default) {
         static size_t curr {0};
         static double refresh_time {ImGui::GetTime()};
-        if (is_clicked_replay) {
+        if (is_clicked_animate) {
             curr = 0;
             refresh_time = ImGui::GetTime();
         }
 
-        double delta = 15.0 / static_cast<double>(points.size()); // animate 15s
-        delta /= speed;
-        while (refresh_time < ImGui::GetTime()) {
-            if (curr < points.size()) {
+        if (is_animating) {
+            double delta = 15.0 / static_cast<double>(points.size()); // animate 15s
+            delta /= speed;
+            while (curr < points.size() && refresh_time < ImGui::GetTime()) {
                 curr++;
+                refresh_time += delta;
             }
-            refresh_time += delta;
+            if (curr == points.size()) {
+                is_animating = false;
+            }
+
         }
 
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        p.x += 100;
-        p.y += 100;
+        if (is_animating == false) {
+            curr = progress;
+        }
         for (size_t i = 0; i < curr; i++) {
             draw_list->PathLineTo(transform(points[i]));
         }
