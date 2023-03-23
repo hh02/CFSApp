@@ -716,7 +716,7 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
             // mouse status
             const bool is_mouse_left_clicked = is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             const bool is_mouse_left_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-            const bool is_mouse_right_released = ImGui::IsMouseReleased(ImGuiMouseButton_Right);
+            const bool is_mouse_right_released = is_hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right);
             const bool is_mouse_right_dragging = is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right);
             const bool is_mouse_moved = is_hovered && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0);
             const bool is_mouse_scrolled = is_hovered && (io.MouseWheel != 0);

@@ -6,6 +6,8 @@ int main(int argc, char *argv[]) {
 
     CFSUI::MyImGuiPlugin myImGuiPlugin;
     viewer.plugins.push_back(&myImGuiPlugin);
+    viewer.core().is_animating = true;
+    viewer.core().animation_max_fps = 90.0;
     viewer.launch(true, false, "CFSApp");
 
 /*
