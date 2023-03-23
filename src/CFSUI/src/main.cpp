@@ -1,9 +1,5 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include "MyImGuiPlugin.h"
-#include <igl/opengl/glfw/imgui/ImGuiMenu.h>
-#include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
-#include <imgui.h>
-#include <iostream>
 
 int main(int argc, char *argv[]) {
     igl::opengl::glfw::Viewer viewer;

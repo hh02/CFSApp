@@ -117,7 +117,7 @@ namespace CFSUI::PathEditor {
 
     inline float L2Distance(const ImVec2 &a, const ImVec2 &b);
 
+    void showPathEditor(bool *p_open, bool *load_mesh);
 
-    void showPathEditor(bool *open);
 }
 #endif //CFSAPP_PATHEDITOR_H

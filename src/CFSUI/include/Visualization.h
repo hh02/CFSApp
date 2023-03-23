@@ -11,9 +11,14 @@
 #include <imgui.h>
 
 namespace CFSUI::Visualization {
+    const int VisualizationType_Default{0};
+    const int VisualizationType_Fill{1};
+    const int VisualizationType_3D{2};
+
+    extern int visualization_type;
+
     void getPointsFromFile(std::vector<ImVec2>& points);
-    void animateCFS(const std::vector<ImVec2> &points);
-    void showVisualization(const std::vector<ImVec2> &points, float tool_path_size);
+    void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size);
 }
 
 #endif //CFSAPP_VISUALIZATION_H
