@@ -108,6 +108,7 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
         // some bool
         static bool preview_mode {false};
         static bool draw_big_start_point {false};
+        static bool is_show_visualization {false};
         bool is_opening_generate {false};
         bool is_opening_visualization {false};
         bool is_clicked_new_path {false};
@@ -125,6 +126,7 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
 
         // output data (CFS visualization)
         static std::vector<ImVec2> CFS_points;
+        static std::vector<ImVec2> smoothed_CFS_points;
 
         static auto update_hovered = [&mouse_pos] {
             float min_dis = std::numeric_limits<float>::max();
@@ -643,6 +645,7 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
             if (ImGui::Button(u8"生成", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
                 ImGui::CloseCurrentPopup();
                 generate_CFS();
+                is_show_visualization = true;
                 is_opening_visualization = true;
                 *load_mesh = true;
             }
@@ -658,12 +661,23 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
 
         if (is_opening_visualization) {
             Visualization::getPointsFromFile(CFS_points);
+            // generate smooth points
+            smoothed_CFS_points.resize(CFS_points.size());
+            smoothed_CFS_points.front() = CFS_points.front();
+            for (size_t i = 1; i+1 < CFS_points.size(); i++) {
+                smoothed_CFS_points[i] = ImVec2{
+                    (CFS_points[i-1].x + CFS_points[i+1].x) / 2.0f,
+                    (CFS_points[i-1].y + CFS_points[i+1].y) / 2.0f
+                };
+            }
+            smoothed_CFS_points.back() = CFS_points.back();
         }
 
 
         ImGuiTableFlags main_table_flags = ImGuiTableFlags_Resizable
             | ImGuiTableFlags_Borders;
-        if (ImGui::BeginTable("main_table", 2, main_table_flags)) {
+        int main_table_column = is_show_visualization ? 2 : 1;
+        if (ImGui::BeginTable("main_table", main_table_column, main_table_flags)) {
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
@@ -1492,9 +1506,13 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
 
             draw_list->PopClipRect();
 
-            ImGui::TableNextColumn();
-            {
+            if (is_show_visualization) {
+                ImGui::TableNextColumn();
+
                 ImGui::Combo(u8"可视化类型", &Visualization::visualization_type, u8" default\0 under/over fill\0 3D\0\0");
+                static bool is_smooth{false};
+                ImGui::SameLine();
+                ImGui::Checkbox("smooth", &is_smooth);
 
                 if (Visualization::visualization_type == Visualization::VisualizationType_3D) {
                     *p_open = false;
@@ -1502,7 +1520,12 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
                     *p_open = true;
                 }
 
-                Visualization::visualizeCFS(CFS_points, tool_path_size);
+                if (is_smooth) {
+                    Visualization::visualizeCFS(smoothed_CFS_points, tool_path_size);
+                }
+                else {
+                    Visualization::visualizeCFS(CFS_points, tool_path_size);
+                }
             }
 
             ImGui::EndTable();

@@ -26,7 +26,7 @@ inline void init_fonts() {
     ImFontGlyphRangesBuilder builder;
     ImGuiIO &io = ImGui::GetIO();
 
-    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径退出在此预览模式生成取消刀具大小可视化默认类型动画");
+    builder.AddText(u8"文件编辑帮助撤销重做剪切复制粘贴删除关于新建打开保存插入图片路径退出在此预览模式生成取消刀具大小可视化默认类型速度播放颜色");
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.BuildRanges(&text_range);
 }

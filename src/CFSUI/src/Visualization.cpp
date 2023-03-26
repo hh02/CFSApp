@@ -37,36 +37,35 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     if (points.empty()) {
         return;
     }
-
     const float point_distance_threshold{tool_path_size * 0.8f};
-    static int progress{1000000000};
-    if (progress >= points.size()) {
-        progress = points.size();
-    }
+    static float percentage {100.0f};
 
     bool is_clicked_animate{false};
     static bool is_animating{false};
     static float speed{1.0f};
     const float thickness {1.0f};
 
-    static const ImGuiColorEditFlags color_editor_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
+    static const ImGuiColorEditFlags color_editor_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs
+        ;
+//        | ImGuiColorEditFlags_NoLabel;
     static ImVec4 CFS_color_vec {0.0f, 1.0f, 0.0f, 1.0f};
     static ImVec4 CFS_fill_color_vec {0.0f, 1.0f, 1.0f, 0.3f};
 
-    ImGui::SliderInt("progress slider", &progress, 0, static_cast<int>(points.size()));
+    ImGui::SliderFloat("ratio slider float", &percentage, 0.0f, 100.0f, "%.1f%%");
+    int progress = std::floor(points.size() * percentage / 100);
 
     if (visualization_type == VisualizationType_Default) {
-        is_clicked_animate = ImGui::Button(u8"动画");
+        is_clicked_animate = ImGui::Button(u8"播放");
         if (is_clicked_animate) {
             is_animating = true;
         }
+        ImGui::SameLine();
+        ImGui::InputFloat(u8"速度", &speed, 0.1f, 1.0f, "%.1f");
 
-        ImGui::InputFloat("speed", &speed, 0.1f, 1.0f, "%.1f");
-
-        ImGui::ColorEdit4("Editor CFS Color", (float*) &CFS_color_vec, color_editor_flags);
+        ImGui::ColorEdit4("颜色##1", (float*) &CFS_color_vec, color_editor_flags);
     }
     else if (visualization_type == VisualizationType_Fill) {
-        ImGui::ColorEdit4("Editor CFS Fill Color", (float*) &CFS_fill_color_vec, color_editor_flags);
+        ImGui::ColorEdit4("颜色##2", (float*) &CFS_fill_color_vec, color_editor_flags);
     }
 
     ImGuiIO &io = ImGui::GetIO();
