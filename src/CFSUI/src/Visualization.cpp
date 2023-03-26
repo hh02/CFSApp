@@ -42,7 +42,9 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
 
     bool is_clicked_animate{false};
     static bool is_animating{false};
-    static float speed{1.0f};
+    const float speeds[] = {0.5f, 1.0f, 1.5f, 2.0f};
+    const char* speeds_text[] = {"0.5x", "1.0x", "1.5x", "2.0x"};
+    static int selected_speed_idx{1};
     static float thickness {0.5f};
 
     static const ImGuiColorEditFlags color_editor_flags = ImGuiColorEditFlags_NoAlpha
@@ -52,26 +54,36 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     static ImVec4 CFS_color_vec {0.0f, 1.0f, 0.0f, 1.0f};
     static ImVec4 CFS_fill_color_vec {0.0f, 1.0f, 1.0f, 0.3f};
 
-    ImGui::SliderFloat("ratio slider float", &percentage, 0.0f, 100.0f, "%.1f%%");
-    int progress = std::floor(points.size() * percentage / 100);
-
     if (visualization_type == VisualizationType_Default) {
         is_clicked_animate = ImGui::Button(u8"播放");
+        ImGui::SameLine();
+        if (ImGui::Button(u8"倍速")) {
+            ImGui::OpenPopup("speed_select_popup");
+        }
+
+        if (ImGui::BeginPopup("speed_select_popup")) {
+            for (int i = 0; i < IM_ARRAYSIZE(speeds_text); i++) {
+                if (ImGui::Selectable(speeds_text[i])) {
+                    selected_speed_idx = i;
+                }
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::SliderFloat(u8"播放进度", &percentage, 0.0f, 100.0f, "%.1f%%");
         if (is_clicked_animate) {
             is_animating = true;
         }
-        ImGui::SameLine();
-        ImGui::InputFloat(u8"速度", &speed, 0.1f, 1.0f, "%.1f");
 
-        ImGui::ColorEdit4("颜色##1", (float*) &CFS_color_vec, color_editor_flags);
+        ImGui::ColorEdit4("路径颜色##1", (float*) &CFS_color_vec, color_editor_flags);
         ImGui::SliderFloat(u8"路径宽度", &thickness, 0.1f, tool_path_size, "%.2f");
     }
     else if (visualization_type == VisualizationType_Fill) {
-        ImGui::ColorEdit4("颜色##2", (float*) &CFS_fill_color_vec, color_editor_flags);
+        ImGui::ColorEdit4("路径颜色##2", (float*) &CFS_fill_color_vec, color_editor_flags);
     }
 
     ImGuiIO &io = ImGui::GetIO();
-    ImVec2 mouse_pos_rel {(io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling};
+//    ImVec2 mouse_pos_rel {(io.MousePos.x - translate.x) / scaling, (io.MousePos.y - translate.y) / scaling};
 
     static ImVec2 canvas_center_prev {0.0f, 0.0f};
     const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
@@ -102,42 +114,42 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     draw_list->PushClipRect(canvas_p0, canvas_p1, true);
 
     if (visualization_type == VisualizationType_Default) {
-        static size_t curr {0};
+        static size_t progress{0};
         static double refresh_time {ImGui::GetTime()};
         if (is_clicked_animate) {
-            curr = 0;
+            progress = 0;
             refresh_time = ImGui::GetTime();
         }
 
         if (is_animating) {
-            double delta = 15.0 / static_cast<double>(points.size()); // animate 15s
-            delta /= speed;
-            while (curr < points.size() && refresh_time < ImGui::GetTime()) {
-                curr++;
+            // default animate 15s
+            const double delta{(15.0/static_cast<double>(points.size())) / speeds[selected_speed_idx]};
+            while (progress < points.size() && refresh_time < ImGui::GetTime()) {
+                progress++;
                 refresh_time += delta;
             }
-            if (curr == points.size()) {
+            if (progress == points.size()) {
                 is_animating = false;
             }
-
+            percentage = 100.0 * progress / points.size();
+        }
+        else {
+            progress = std::floor(1.0 * points.size() * percentage / 100.0);
         }
 
-        if (is_animating == false) {
-            curr = progress;
-        }
-        for (size_t i = 0; i < curr; i++) {
+        for (size_t i = 0; i < progress; i++) {
             draw_list->PathLineTo(transform(points[i]));
         }
         draw_list->PathStroke(ImGui::GetColorU32(CFS_color_vec), ImDrawFlags_None, thickness*scaling);
     }
     else if (visualization_type == VisualizationType_Fill) {
         static ImVec2 pre_point {1e3, 1e3};
-        for (size_t i = 0; i < progress; i++) {
-            if (std::hypot(points[i].x-pre_point.x, points[i].y-pre_point.y) < point_distance_threshold) {
+        for (auto point : points) {
+            if (std::hypot(point.x-pre_point.x, point.y-pre_point.y) < point_distance_threshold) {
                 continue;
             }
-            draw_list->PathLineTo(transform(points[i]));
-            pre_point = points[i];
+            draw_list->PathLineTo(transform(point));
+            pre_point = point;
         }
         draw_list->PathStroke(ImGui::GetColorU32(CFS_fill_color_vec), ImDrawFlags_None, tool_path_size*scaling);
     }
