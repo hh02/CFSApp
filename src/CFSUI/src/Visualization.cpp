@@ -43,11 +43,12 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
     bool is_clicked_animate{false};
     static bool is_animating{false};
     static float speed{1.0f};
-    const float thickness {1.0f};
+    static float thickness {0.5f};
 
-    static const ImGuiColorEditFlags color_editor_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoInputs
+    static const ImGuiColorEditFlags color_editor_flags = ImGuiColorEditFlags_NoAlpha
+//        | ImGuiColorEditFlags_NoInputs
+//        | ImGuiColorEditFlags_NoLabel
         ;
-//        | ImGuiColorEditFlags_NoLabel;
     static ImVec4 CFS_color_vec {0.0f, 1.0f, 0.0f, 1.0f};
     static ImVec4 CFS_fill_color_vec {0.0f, 1.0f, 1.0f, 0.3f};
 
@@ -63,6 +64,7 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
         ImGui::InputFloat(u8"速度", &speed, 0.1f, 1.0f, "%.1f");
 
         ImGui::ColorEdit4("颜色##1", (float*) &CFS_color_vec, color_editor_flags);
+        ImGui::SliderFloat(u8"路径宽度", &thickness, 0.1f, tool_path_size, "%.2f");
     }
     else if (visualization_type == VisualizationType_Fill) {
         ImGui::ColorEdit4("颜色##2", (float*) &CFS_fill_color_vec, color_editor_flags);
@@ -126,7 +128,7 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
         for (size_t i = 0; i < curr; i++) {
             draw_list->PathLineTo(transform(points[i]));
         }
-        draw_list->PathStroke(ImGui::GetColorU32(CFS_color_vec), ImDrawFlags_None, thickness);
+        draw_list->PathStroke(ImGui::GetColorU32(CFS_color_vec), ImDrawFlags_None, thickness*scaling);
     }
     else if (visualization_type == VisualizationType_Fill) {
         static ImVec2 pre_point {1e3, 1e3};
