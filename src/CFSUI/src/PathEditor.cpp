@@ -652,8 +652,8 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
             ImGui::SetItemDefaultFocus();
             ImGui::SameLine();
             if (ImGui::Button(u8"取消", {ImGui::GetFontSize() * 4.0f, ImGui::GetFontSize() * 1.5f})) {
+                is_show_visualization = true;
                 ImGui::CloseCurrentPopup();
-                is_opening_visualization = true;
             }
             ImGui::EndPopup();
         }

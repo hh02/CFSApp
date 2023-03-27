@@ -74,7 +74,7 @@ IGL_INLINE void MyImGuiPlugin::init(igl::opengl::glfw::Viewer *_viewer)
         ImGui_ImplGlfw_InitForOpenGL(viewer->window, false);
         ImGui_ImplOpenGL3_Init(glsl_version);
         ImGui::GetIO().IniFilename = nullptr;
-//            ImGui::StyleColorsDark();
+        ImGui::StyleColorsDark();
         ImGuiStyle& style = ImGui::GetStyle();
         style.FrameRounding = 5.0f;
 
@@ -130,29 +130,16 @@ IGL_INLINE bool MyImGuiPlugin::post_draw()
         bool load_mesh {false};
         PathEditor::showPathEditor(&show_path_editor, &load_mesh);
         if (load_mesh) {
-            Eigen::MatrixXd V;
-            Eigen::MatrixXi F;
-            igl::readOBJ("./output.obj", V, F);
-            viewer->data().set_mesh(V, F);
+            viewer->load_mesh_from_file("./output.obj");
         }
     } else {
         if (ImGui::Begin("viewer tool")) {
-
             ImGui::Combo(u8"可视化类型", &Visualization::visualization_type, u8" default\0 under/over fill\0 3D\0\0");
-
             if (Visualization::visualization_type != Visualization::VisualizationType_3D) {
                 show_path_editor = true;
             }
-
-            if (ImGui::Button("back")) {
-                show_path_editor = true;
-            }
-            if (ImGui::Button("load")) {
-                Eigen::MatrixXd V;
-                Eigen::MatrixXi F;
-                igl::readOBJ("./output.obj", V, F);
-                viewer->data().clear();
-                viewer->data().set_mesh(V, F);
+            if (ImGui::Button("open mesh")) {
+                viewer->open_dialog_load_mesh();
             }
             ImGui::End();
         }
