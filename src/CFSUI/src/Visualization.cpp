@@ -61,6 +61,9 @@ void visualizeCFS(const std::vector<ImVec2>& points, float tool_path_size) {
             ImGui::OpenPopup("speed_select_popup");
         }
 
+        ImGui::SameLine();
+        ImGui::Text("%s", speeds_text[selected_speed_idx]);
+
         if (ImGui::BeginPopup("speed_select_popup")) {
             for (int i = 0; i < IM_ARRAYSIZE(speeds_text); i++) {
                 if (ImGui::Selectable(speeds_text[i])) {
