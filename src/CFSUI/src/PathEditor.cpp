@@ -1512,7 +1512,7 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
             if (is_show_visualization) {
                 ImGui::TableNextColumn();
 
-                ImGui::Combo(u8"可视化类型", &Visualization::visualization_type, u8" default\0 under/over fill\0 3D\0\0");
+                ImGui::Combo(u8"可视化类型", &Visualization::visualization_type, u8" 动画\0 仿真\0 三维\0\0");
                 if (Visualization::visualization_type == Visualization::VisualizationType_3D) {
                     *p_open = false;
                 } else {
