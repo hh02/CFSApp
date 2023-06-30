@@ -1173,14 +1173,12 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
                     return make_transition_table(
                         *Normal_s + event<mouse_moved> / update_hovered,
                         Normal_s + event<mouse_scrolled> / zoom,
-                        Normal_s +
-                            event<clicked_new_path>[is_last_path_closed] / (new_path, new_node) = Inserting_s,
+                        Normal_s + event<clicked_new_path>[is_last_path_closed] / (new_path, new_node) = Inserting_s,
                         Normal_s + event<mouse_left_clicked> / (update_selected, set_moving_context) = Moving_s,
                         Normal_s + event<mouse_right_dragging> = Dragging_s,
                         Normal_s + event<mouse_right_released>[is_path] / (update_selected, show_path_popup),
                         Normal_s + event<mouse_right_released>[is_image] / (update_selected, show_image_popup),
-                        Normal_s +
-                            event<mouse_right_released>[is_blank] / (update_selected, show_context_popup),
+                        Normal_s + event<mouse_right_released>[is_blank] / (update_selected, show_context_popup),
                         Normal_s + event<keyboard_undo> / undo,
                         Normal_s + event<keyboard_redo> / redo,
                         Normal_s + event<keyboard_cut> / cut,
@@ -1189,13 +1187,10 @@ void showPathEditor(bool *p_open, bool *load_mesh) {
                         Dragging_s + event<mouse_right_released> = Normal_s,
                         Dragging_s + event<mouse_moved> / update_translate,
                         Inserting_s + event<mouse_left_released>[is_inserting_first] / new_node,
-                        Inserting_s + event<mouse_left_released>[!is_inserting_first && !is_start_point] /
-                            update_history = Normal_s,
-                        Inserting_s + event<mouse_left_clicked>[!is_inserting_first && is_start_point] /
-                            (close_path, update_history) = Normal_s,
+                        Inserting_s + event<mouse_left_released>[!is_inserting_first && !is_start_point] / update_history = Normal_s,
+                        Inserting_s + event<mouse_left_clicked>[!is_inserting_first && is_start_point] / (close_path, update_history) = Normal_s,
                         Inserting_s + event<mouse_moved> / update_inserting_points_pos,
-                        Moving_s +
-                            event<mouse_left_released>[!is_moving_moved && is_open_point] / new_node = Inserting_s,
+                        Moving_s + event<mouse_left_released>[!is_moving_moved && is_open_point] / new_node = Inserting_s,
                         Moving_s + event<mouse_left_released>[!is_moving_moved && !is_open_point] = Normal_s,
                         Moving_s + event<mouse_left_released>[is_moving_moved] / update_history = Normal_s,
                         Moving_s + event<mouse_moved> / update_moving_context
